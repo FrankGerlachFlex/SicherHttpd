@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include "feld.h"
 
 using namespace std;
  
@@ -20,12 +21,38 @@ class Zeichenkette
    char* m_puffer;
    uint64_t m_kapazitaet;//groesse des Puffers
    uint64_t m_gueltig;//anzahl Zeichen gueltig
-public:
-   Zeichenkette(uint64_t kapazitaet,bool& erfolg):m_kapazitaet(0),m_gueltig(0)
+
+   void richteEin()
    {
-      m_puffer = new char[kapazitaet];
-      erfolg = (m_puffer != NULL);
+      m_puffer = NULL;
+      m_kapazitaet = 0;
+      m_gueltig = 0;
    }
+public:
+   Zeichenkette(const Zeichenkette& andere) 
+   {
+       richteEin();
+       dazu(andere);
+   }
+
+   Zeichenkette(Zeichenkette& andere)
+   {
+      richteEin();
+      dazu(andere);
+   }
+
+   Zeichenkette(uint64_t kapazitaet, bool& erfolg)
+   {
+      richteEin();
+      erfolg = sichereKapazitaet(kapazitaet);
+   }
+
+   Zeichenkette() 
+   {
+       richteEin();
+   }
+
+
 
    char operator[](uint64_t stelle) const
    {
@@ -35,8 +62,10 @@ public:
       }
       else
       {
-         return 0;//Fehler
+         perror("Indexfehler in Zeichenkette::operator[]");
+         exit(-1);        
       }
+      return 0xFF;//dummy
    }
  
    bool sichereKapazitaet(uint64_t mindestKapazitaet)
@@ -59,6 +88,7 @@ public:
           }
           delete[] m_puffer;
           m_puffer = neuPuffer;
+          m_kapazitaet = neuKapazitaet;
        }
        return true;
    }
@@ -89,6 +119,48 @@ public:
    bool dazu(const Zeichenkette& zeichenkette)
    {
       return dazu(zeichenkette.m_puffer,zeichenkette.m_gueltig);
+   }
+
+   bool dazu(char zeichen)
+   {
+      if( m_gueltig == m_kapazitaet )
+      {
+          if( !sichereKapazitaet(m_gueltig+1) )
+          {
+            return false;
+          }
+      }
+      m_puffer[m_gueltig++] = zeichen;
+      return true;
+   }
+
+   bool weiseZu(const char* dazuNT)
+   {
+       leere();
+       return dazu(dazuNT);
+   }
+
+   bool weiseZu(const Zeichenkette& zkDazu)
+   {
+       leere();
+       return dazu(zkDazu);
+   }
+
+   void operator=(const char* dazuNT)
+   {
+         if(!weiseZu(dazuNT) )
+         {
+            perror("Speichermangel");
+            exit(-1);
+         }
+   }
+   void operator=(const Zeichenkette& dazu)
+   {
+         if(!weiseZu(dazu) )
+         {
+            perror("Speichermangel");
+            exit(-1);
+         }
    }
 
    uint64_t laenge() const
@@ -136,6 +208,74 @@ public:
           m_puffer = NULL;
           m_kapazitaet = 0;
        }
+   }
+ 
+   static bool istLeerzeichen(char zeichen)
+   {
+      switch( zeichen )
+      {
+         case ' ':
+         case '\t':return true;
+      }
+      return false;
+   }
+
+   /* suche die "linke" Zeichenkette bis zu einem Leerzeichen.
+      Gebe false zurück, wenn Speicher nicht angefordert werden kann */
+   bool linksBisLeerzeichen(Zeichenkette& links) const
+   {
+        uint64_t i=0;
+        char zeichen = 1;
+        char puffer[2];
+        puffer[1] = 0;
+        links.leere();
+        while( i < m_gueltig )
+        {
+           zeichen = (*this)[i++];
+           if( istLeerzeichen(zeichen) )
+           {
+              break;
+           }
+           else
+           {
+              puffer[0] = zeichen;
+              if( !links.dazu(puffer) )
+              {
+                 return false;
+              }              
+           }
+        }
+        return true;
+   }
+
+   bool letztesZeichenIst(char zeichen) const
+   {
+      if( m_gueltig > 0 )
+      {
+         return m_puffer[m_gueltig-1] == zeichen;
+      }
+      return false;
+   }
+
+   /* spalte die ZK nach einem Trennzeichen auf. Maximalzahl Spalten gegeben durch
+      die Groesse des Feldes spalten.
+   */
+   void spalteAuf(char trenner, Feld<Zeichenkette>& spalten)
+   {
+      uint64_t spaltenZeiger = 0;
+      uint64_t zeichenZeiger = 0;
+      while( (zeichenZeiger < m_gueltig) && (spaltenZeiger < spalten.size()) )
+      {
+         char zeichen = m_puffer[zeichenZeiger++];
+         if( zeichen == trenner )
+         {
+            spaltenZeiger++;
+         }
+         else
+         {
+            spalten[spaltenZeiger].dazu(zeichen);  
+         }
+      }
    }
  
    ~Zeichenkette()
