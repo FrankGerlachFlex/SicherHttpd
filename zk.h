@@ -60,6 +60,7 @@ public:
           delete[] m_puffer;
           m_puffer = neuPuffer;
        }
+       return true;
    }
 
    bool dazu(const char* zeichenketteNT)
@@ -81,6 +82,7 @@ public:
        {
           m_puffer[i] = zeichenkette[j];
        }
+       m_gueltig = neuLaenge;
        return true;
    }
 
@@ -92,6 +94,48 @@ public:
    uint64_t laenge() const
    {
       return m_gueltig;
+   }
+
+   bool operator==(const char* vergleichZK) const
+   {
+       return gleich(vergleichZK);
+   }
+
+   bool operator==(const Zeichenkette& vergleichZK) const
+   {
+       return (vergleichZK.m_gueltig == m_gueltig) && gleich(vergleichZK.m_puffer);
+   }
+
+   bool gleich(const char* vergleichZK) const
+   {
+       uint64_t i=0;
+       while( (i < m_gueltig) && vergleichZK[i] && (vergleichZK[i] == m_puffer[i]) )
+       {
+          i++;
+       } 
+       return i == m_gueltig;
+   }
+
+   /* gebe einen Nullterminierten "C String" zurueck */
+   const char* zkNT()
+   {
+      if( !sichereKapazitaet(m_gueltig+1) )
+      {
+         return NULL;
+      }
+      m_puffer[m_gueltig] = 0;
+      return m_puffer;
+   }
+
+   void leere(bool gebeSpeicherFrei=false)
+   {
+       m_gueltig = 0;
+       if( gebeSpeicherFrei )
+       {
+          delete[] m_puffer;
+          m_puffer = NULL;
+          m_kapazitaet = 0;
+       }
    }
  
    ~Zeichenkette()
