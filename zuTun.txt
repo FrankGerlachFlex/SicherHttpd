@@ -1,0 +1,5 @@
+Liste der offenen Punkte
+
+TD1 Lastbegrenzung - Anzahl paralleler Threads begrenzen
+
+TD2 Port, htdocs, Anzahl Threads konfigurierbar machen
