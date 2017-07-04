@@ -67,13 +67,11 @@ public:
          } 
          else
          {
-            cout << antwort << " oktets gelesen " << endl;
             m_gueltig = antwort;
             m_leseZeiger = 0;
          }
       }
       erfolg = true;
-      //cout  << m_rohPuffer[m_leseZeiger];
       return m_rohPuffer[m_leseZeiger++];
    }
 
@@ -233,7 +231,7 @@ void sendAlles(int socket, char* puffer, uint16_t anzahl)
 /* sende eine Null-Terminierte Zeichenkette an die Gegenstelle */
 void sendAllesZK(int socket, char* pufferNT)
 {
-  cout << "sendAllesZK() " << pufferNT << endl;
+  //cout << "sendAllesZK() " << pufferNT << endl;
   sendAlles(socket,pufferNT,strlen(pufferNT));
 }
 
@@ -312,7 +310,7 @@ void* arbeite(void* param) //int client)
  Zeichenkette url = spalten[1];
  
 
- cout << "methode: " << methode.zkNT() << endl;
+ //cout << "methode: " << methode.zkNT() << endl;
 
  if ( ! ((methode == "GET") || (methode == "POST"))  )
  {
@@ -530,13 +528,10 @@ void serve_file(Lesepuffer& lesepuffer,int clientSocket, const char *filename)
  Zeichenkette zeile(1000,erfolg);
 
  while ( numchars > 0 )  /* read & discard kopfZeilen */
- {
-   cout << "P0" << endl;
+ {  
    numchars = leseZeile(lesepuffer, zeile, 1000);
    zeile.leere();
  }
-
- cout << "P1" << endl;
 
  resource = fopen(filename, "r");
  if (resource == NULL)
@@ -545,11 +540,8 @@ void serve_file(Lesepuffer& lesepuffer,int clientSocket, const char *filename)
  }
  else
  {
-  //cout << "P2" << endl;
-  kopfZeilen(clientSocket, filename);
-  //cout << "P3" << endl;
-  sendeDatei(clientSocket, resource);
-  //cout << "P4" << endl;
+    kopfZeilen(clientSocket, filename); 
+    sendeDatei(clientSocket, resource);
  }
  fclose(resource);
 }
