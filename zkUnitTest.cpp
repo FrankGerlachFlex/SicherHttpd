@@ -1,8 +1,9 @@
 #include <assert.h>
 #include <iostream>
 #include "zk.h"
+#include "feld.h"
 
-/* Unit Test fuer Stringklasse */
+/* Unit Test fuer Zeichenketten-Klasse */
 
 
 using namespace std;
@@ -62,8 +63,33 @@ int main(int argc,char** argv)
       assert( zkb.dazu(dazuStr) );
    }
    assert( (zkb.laenge() == 10) && (zkb == "ABCDEFGHIJ" ) );
-    
-   
+
+   zk = "12345";
+   assert( (zk.laenge() == 5) && (zk == "12345") );
+
+   zk = "GET /index.html HTTP/1.0";
+   erfolg = zk.linksBisLeerzeichen(zkb);
+   assert( erfolg && (zkb.laenge() == 3) && (zkb == "GET" ) );
+
+   assert( zk.letztesZeichenIst('0') );
+
+   zkb.leere(true);
+   for(i=0; i < 10;i++)
+   {       
+      assert( zkb.dazu('A'+i) );
+   }
+   assert( (zkb.laenge() == 10) && (zkb == "ABCDEFGHIJ" ) );
+
+   Feld<Zeichenkette> feld;
+   feld.resize(3);
+
+   zk = "GET /broschuere.html HTTP/1.0 nix mehr";
+
+   zk.spalteAuf(' ',feld);
+
+   assert( feld[0] == "GET" );
+   assert( feld[1] == "/broschuere.html" );
+   assert( feld[2] == "HTTP/1.0" );
 
    cout << "Unit test erfolgreich" << endl;
 }

@@ -29,6 +29,7 @@ extern "C" {
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <iostream>
+#include "zk.h"
 
 using namespace std;
 
@@ -84,13 +85,16 @@ public:
 
 };
 
+
+
+
 void* arbeite(void* param);
 void fehlermeldung(int);
 void sendeDatei(int, FILE *);
 void fatalerFehler(const char *);
-int leseZeile(Lesepuffer& lesepuffer, char *, int);
+int leseZeile(Lesepuffer& lesepuffer, Zeichenkette& zeichenkette, int);
 void kopfZeilen(int, const char *);
-void not_found(int);
+void melde404(int);
 void serve_file(Lesepuffer&,int, const char *);
 int fahreHoch(u_short *);
 void nichtRealisiert(int);
@@ -173,18 +177,18 @@ bool istNormalZeichen(char z)
 /* stelle sicher, dass in der URL keine illegalen Zeichen oder
    Konstrukte, insbesondere ".." vorhanden sind.
 */
-bool pruefeURL(char* zk)
+bool pruefeURL(const Zeichenkette& url)
 {
    uint16_t zeiger = 0;
-   char zeichen = zk[zeiger++]; 
+   char zeichen = url[zeiger++]; 
   
-   while( (zeiger < 1000) && zeichen )
+   while( true )
    {
        if( !istNormalZeichen(zeichen) )
        {
           if( zeichen == '.' )
           {
-             zeichen = zk[zeiger++];
+             zeichen = url[zeiger++];
              if( zeichen && !istNormalZeichen(zeichen) )
              {
                return false;
@@ -194,7 +198,11 @@ bool pruefeURL(char* zk)
        }
        else
        {
-         zeichen = zk[zeiger++];
+         if( zeiger == url.laenge() )
+         {
+           break;
+         }
+         zeichen = url[zeiger++];
        }
    }
    return true; 
@@ -254,24 +262,29 @@ void nichtRealisiert(int client)
 	sendAllesZK(client, buf);
 }
 
+class SocketSchliesserHelfer
+{
+   int m_socket;
+public:
+   SocketSchliesserHelfer(int socket): m_socket(socket)
+   {
+   }
+   ~SocketSchliesserHelfer()
+   {
+      close(m_socket);
+   }
+};
+
 
 /*arbeite die Anfrage auf einem Socket ab */
 void* arbeite(void* param) //int client)
 {
  long long clientLL = (long long)param;
  int client = clientLL;
+ uint32_t numchars=0;
 
- char url[255];
- char path[512];
- char buf[1024];
- int numchars;
- char method[255];
+ SocketSchliesserHelfer sslh(client);
  
- size_t i, j;
- struct stat st;
- int cgi = 0;      /* becomes true if server decides this is a CGI
-                    * program */
- char *query_string = NULL;
 
  bool erfolg;
  Lesepuffer lesepuffer(client,erfolg);
@@ -281,88 +294,81 @@ void* arbeite(void* param) //int client)
    return NULL;
  } 
 
- numchars = leseZeile(lesepuffer, buf, sizeof(buf));
-
-
- cout << "request: " << buf << endl;
-
- i = 0; j = 0;
- while (!leerzeichen(buf[j]) && (i < sizeof(method) - 1))
+  
+ Zeichenkette ersteZeile(1025,erfolg);
+ if(!erfolg)
  {
-  method[i] = buf[j];
-  i++; j++;
- }
- method[i] = '\0';
-
- if (strcasecmp(method, "GET") && strcasecmp(method, "POST"))
- {
-  nichtRealisiert(client);
-  return NULL;
+    return NULL;
  }
 
- if (strcasecmp(method, "POST") == 0)
-  cgi = 1;
+ numchars = leseZeile(lesepuffer, ersteZeile,1024);
 
- i = 0;
- while (leerzeichen(buf[j]) && (j < sizeof(buf)))
-  j++;
- while (!leerzeichen(buf[j]) && (i < sizeof(url) - 1) && (j < sizeof(buf)))
+ Feld<Zeichenkette> spalten;
+ spalten.resize(2);
+
+ ersteZeile.spalteAuf(' ', spalten);
+ 
+ Zeichenkette methode = spalten[0];
+ Zeichenkette url = spalten[1];
+ 
+
+ cout << "methode: " << methode.zkNT() << endl;
+
+ if ( ! ((methode == "GET") || (methode == "POST"))  )
  {
-  url[i] = buf[j];
-  i++; j++;
+     nichtRealisiert(client);
+     return NULL;
  }
- url[i] = '\0';
 
- printf("%s\n",url);
+ if ( methode == "POST")
+ {
+      
+ }
+
+ 
 
  if( !pruefeURL(url) )
  {
    printf("illegale URL\n");
-   url[0] = 0;  
+   return NULL;  
  }
 
- if (strcasecmp(method, "GET") == 0)
- {
-  query_string = url;
-  while ((*query_string != '?') && (*query_string != '\0'))
-   query_string++;
-  if (*query_string == '?')
-  {
-   cgi = 1;
-   *query_string = '\0';
-   query_string++;
-  }
- }
+ 
 
- sprintf(path, "/home/buero/htdocs%s", url);
- if (path[strlen(path) - 1] == '/')
-  strcat(path, "index.html");
- if (stat(path, &st) == -1) {
-  while ( numchars > 0 )  /* read & discard kopfZeilen */
-   numchars = leseZeile(lesepuffer, buf, sizeof(buf));
-  not_found(client);
- }
- else
- {
-  if ((st.st_mode & S_IFMT) == S_IFDIR)
-   strcat(path, "/index.html");
-  if ((st.st_mode & S_IXUSR) ||
-      (st.st_mode & S_IXGRP) ||
-      (st.st_mode & S_IXOTH)    )
-   cgi = 1;
-  if (!cgi)
-  {
-   printf("%s\n",path);
-   serve_file(lesepuffer,client, path);
-  }
-  else
-  {}
-   //fuehreCGIAus(client, path, method, query_string);
- }
+   if( methode == "GET" )
+   {
+    
+       Zeichenkette dateiPfad(50,erfolg);
+       if( !erfolg )
+       {
+         return NULL;
+       }
+       dateiPfad.dazu("/home/buero/htdocs");
+       dateiPfad.dazu(url);
 
- close(client);
+       if ( dateiPfad.letztesZeichenIst('/') )
+       {
+          dateiPfad.dazu("index.html");
+       }
 
- return NULL;
+       struct stat st;
+       if (stat(dateiPfad.zkNT(), &st) == -1) 
+       {
+           bool erfolg;
+           Zeichenkette zeile(1000, erfolg);
+           while ( numchars > 0 )  /* lese und verwerfe kopfZeilen */
+           {              
+              numchars = leseZeile(lesepuffer, zeile, 1000);
+              zeile.leere();
+           }
+           melde404(client);
+       }
+       else
+       {
+           serve_file(lesepuffer,client, dateiPfad.zkNT());
+       }
+   }
+   return NULL;
 }
 
 void fehlermeldung(int client)
@@ -403,14 +409,13 @@ void fatalerFehler(const char *sc)
 }
 
 /* lese eine Zeile des HTTP-Protokolls ein */
-int leseZeile(Lesepuffer& lesepuffer, char *buf, int size)
+int leseZeile(Lesepuffer& lesepuffer, Zeichenkette& zeichenkette, int size)
 {
     bool erfolg;
-    uint16_t ausgabeZeiger=0;
     char zeichen = lesepuffer.leseZeichen(erfolg);
+    int ausgabeZeiger(0);
     if(!erfolg)
     {
-      cout << "F1" << endl;
       return -1;
     }
     do
@@ -420,28 +425,23 @@ int leseZeile(Lesepuffer& lesepuffer, char *buf, int size)
           zeichen = lesepuffer.leseZeichen(erfolg);
           if(!erfolg || (zeichen != '\n') )
           {
-            buf[size -1] = 0;
-            cout << "puffer-1-1:" << buf;
             return -1;
-          }
-           
+          } 
        }   
        else
        {
           if( ausgabeZeiger < size )
           {
-             buf[ausgabeZeiger++] = zeichen;               
+             zeichenkette.dazu(zeichen); 
+             ausgabeZeiger++;              
           }
           else
           {
-            buf[size -1] = 0;
-            cout << "puffer-1:" << buf;
             return -1;
           }
           zeichen = lesepuffer.leseZeichen(erfolg);
           if(!erfolg)
           {
-            cout << "puffer-3:" << buf;
             return -1;
           } 
        } 
@@ -449,19 +449,7 @@ int leseZeile(Lesepuffer& lesepuffer, char *buf, int size)
     }
     while(zeichen != '\n');
 
-    if( ausgabeZeiger < size )
-    {
-       buf[ausgabeZeiger++] = 0;               
-    }
-    else
-    {
-       cout << "puffer-2:" << buf;
-       buf[size-1] = 0;
-       return -1;
-    }
-    //cout << "puffer:" << buf << endl;
-
-    return ausgabeZeiger-1 ;
+    return zeichenkette.laenge();
 }
 
 int fahreHoch(u_short *port)
@@ -511,10 +499,8 @@ void kopfZeilen(int client, const char *filename)
  sendAllesZK(client, buf);
 }
 
-/**********************************************************************/
-/* Give a client a 404 not found status message. */
-/**********************************************************************/
-void not_found(int client)
+ 
+void melde404(int client)
 {
     char buf[1024];
 
@@ -539,27 +525,31 @@ void serve_file(Lesepuffer& lesepuffer,int clientSocket, const char *filename)
 {
  FILE *resource = NULL;
  int numchars = 1;
- char buf[1024];
+ 
+ bool erfolg(false);
+ Zeichenkette zeile(1000,erfolg);
 
- buf[0] = 'A'; buf[1] = '\0';
  while ( numchars > 0 )  /* read & discard kopfZeilen */
  {
-  cout << "P0" << endl;
-  numchars = leseZeile(lesepuffer, buf, sizeof(buf));
+   cout << "P0" << endl;
+   numchars = leseZeile(lesepuffer, zeile, 1000);
+   zeile.leere();
  }
 
  cout << "P1" << endl;
 
  resource = fopen(filename, "r");
  if (resource == NULL)
-  not_found(clientSocket);
+ {
+     melde404(clientSocket);
+ }
  else
  {
-  cout << "P2" << endl;
+  //cout << "P2" << endl;
   kopfZeilen(clientSocket, filename);
-  cout << "P3" << endl;
+  //cout << "P3" << endl;
   sendeDatei(clientSocket, resource);
-  cout << "P4" << endl;
+  //cout << "P4" << endl;
  }
  fclose(resource);
 }
@@ -572,7 +562,7 @@ void serve_file(Lesepuffer& lesepuffer,int clientSocket, const char *filename)
 int main(void)
 {
  int server_sock = -1;
- u_short port = 82;
+ u_short port = 8204;
  int client_sock = -1;
  struct sockaddr_in client_name;
  socklen_t client_name_len = sizeof(client_name);
