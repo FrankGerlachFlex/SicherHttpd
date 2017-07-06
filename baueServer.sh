@@ -1,1 +1,1 @@
-g++ -g -Wall -pthread sicherServer.cpp -o sicherServer 
+g++ -g -Wall -pthread sicherServer.cpp sicherSturz.cpp -o sicherServer 
