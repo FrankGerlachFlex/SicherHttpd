@@ -177,6 +177,10 @@ bool istNormalZeichen(char z)
 */
 bool pruefeURL(const Zeichenkette& url)
 {
+   if( url.laenge() == 0 )
+   {
+      return false;
+   }
    uint16_t zeiger = 0;
    char zeichen = url[zeiger++]; 
   
