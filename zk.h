@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "feld.h"
+#include "sicherSturz.h"
 
 using namespace std;
  
@@ -62,8 +63,9 @@ public:
       }
       else
       {
-         perror("Indexfehler in Zeichenkette::operator[]");
-         exit(-1);        
+         //perror("Indexfehler in Zeichenkette::operator[]");
+         //exit(-1);        
+         sicherSturz("Indexfehler in Zeichenkette::operator[]");
       }
       return 0xFF;//dummy
    }
@@ -150,16 +152,14 @@ public:
    {
          if(!weiseZu(dazuNT) )
          {
-            perror("Speichermangel");
-            exit(-1);
+            sicherSturz("Speichermangel");
          }
    }
    void operator=(const Zeichenkette& dazu)
    {
          if(!weiseZu(dazu) )
          {
-            perror("Speichermangel");
-            exit(-1);
+            sicherSturz("Speichermangel");
          }
    }
 
