@@ -1,4 +1,5 @@
 #include "sicherSturz.h"
+#include "stdio.h"
 
 
 void sicherSturz(const char* meldung)
