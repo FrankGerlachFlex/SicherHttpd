@@ -402,8 +402,7 @@ void sendeDatei(int client, FILE *resource)
 
 void fatalerFehler(const char *sc)
 {
- perror(sc);
- exit(1);
+   sicherSturz(sc);
 }
 
 /* lese eine Zeile des HTTP-Protokolls ein */
