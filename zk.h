@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdint.h>
 #include "feld.h"
 #include "sicherSturz.h"
 
@@ -29,6 +30,7 @@ class Zeichenkette
       m_kapazitaet = 0;
       m_gueltig = 0;
    }
+
 public:
    Zeichenkette(const Zeichenkette& andere) 
    {
@@ -136,6 +138,46 @@ public:
       return true;
    }
 
+   /* fuege eine Zahl in ihrer Zeichenketten-Darstellung zur Zeichenkette dazu
+      basis darf sein 2..36
+   */
+   bool dazuZahl(uint64_t wert, uint8_t basis = 10)
+   {
+      char puffer[20];
+      if( wert == 0 )
+      {
+         if( !dazu('0') ) 
+         { 
+           return false;
+         }
+         else return true;
+      }
+      uint8_t ausgabeZeiger=0;
+      while( wert > 0 )
+      {
+         uint8_t ziffer = wert%basis;
+         if( ziffer <= 9 )
+         {
+            ziffer += '0';
+         }
+         else
+         {
+            ziffer += ('A' - 10);
+         }
+         puffer[ausgabeZeiger++] = ziffer;
+         wert /= basis;
+      }
+      if( !sichereKapazitaet(m_gueltig+ausgabeZeiger) )
+      {
+         return false;
+      }
+      for(int8_t i=(ausgabeZeiger-1); i>=0; i--)
+      {
+         m_puffer[m_gueltig++] = puffer[i];
+      }
+      return true; 
+   }
+
    bool weiseZu(const char* dazuNT)
    {
        leere();
@@ -175,7 +217,18 @@ public:
 
    bool operator==(const Zeichenkette& vergleichZK) const
    {
-       return (vergleichZK.m_gueltig == m_gueltig) && gleich(vergleichZK.m_puffer);
+       if(vergleichZK.m_gueltig == m_gueltig)
+       {
+          for(uint64_t i=0; i < m_gueltig; i++)
+          {
+             if( m_puffer[i] != vergleichZK.m_puffer[i] )
+             {
+                return false;
+             }
+          }
+          return true;
+       }
+       return false;
    }
 
    bool gleich(const char* vergleichZK) const
@@ -185,7 +238,7 @@ public:
        {
           i++;
        } 
-       return i == m_gueltig;
+       return (i == m_gueltig) && (vergleichZK[i] == 0);
    }
 
    /* gebe einen Nullterminierten "C String" zurueck */
@@ -196,6 +249,12 @@ public:
          return NULL;
       }
       m_puffer[m_gueltig] = 0;
+      return m_puffer;
+   }
+
+   /* gebe einen NICHT Nullterminierten "String" zurueck */
+   const char* zk() const
+   {
       return m_puffer;
    }
 
@@ -277,6 +336,8 @@ public:
          }
       }
    }
+
+   
  
    ~Zeichenkette()
    {
