@@ -11,7 +11,7 @@
 
 using namespace std;
  
-
+#ifdef URLPARSER_UNITTEST
 void URLParser::holeZeichen()
 {
    if( m_ausgabeStelle < m_eingabe.laenge() )
@@ -25,6 +25,15 @@ void URLParser::holeZeichen()
       m_hatZeichen = false;
    }
 }
+#else 
+
+void URLParser::holeZeichen()
+{  
+    bool erfolg;
+    m_aktuellesZeichen = m_lesePuffer->leseZeichen(erfolg);
+    m_hatZeichen = erfolg; 
+}
+#endif
 
 bool URLParser::istGrossBst(char z)
 {
@@ -249,14 +258,9 @@ bool URLParser::leseWortMitPunkten(Zeichenkette& wort)
    return wort.laenge() > 0;
 }
 
-URLParser::URLParser(const char* url):m_ausgabeStelle(0),
-                                       m_aktuellesZeichen(0),
-                                       m_hatZeichen(false)
-{
-    m_eingabe = url;
-}
+ 
 
-bool URLParser::parseProzedurParameter()
+bool URLParser::parseProzedurParameter(ParameterListeTyp& parameterListe)
 {
    bool erfolg;
    Zeichenkette paramName(20,erfolg);
@@ -283,7 +287,13 @@ bool URLParser::parseProzedurParameter()
              return false;
           }
        }
-       cout << "PARAM " << paramName.zkNT() << " " << paramWert.zkNT() << endl;
+       //cout << "PARAM " << paramName.zkNT() << " " << paramWert.zkNT() << endl;
+       if( !parameterListe.trageEin(paramName,paramWert) )
+       {
+          return false;
+       }
+       paramName.leere();
+       paramWert.leere();
        if( m_hatZeichen && (m_aktuellesZeichen == '&') )
        {
           holeZeichen();
@@ -292,16 +302,29 @@ bool URLParser::parseProzedurParameter()
    return true;
 }
 
-bool URLParser::parseURL()
+/* parse die erste HTTP Zeile. Im Falle einer Dateianforderung ist urlPfad gefuellt. 
+                               Im Falle eines Prozeduraufrufs ist prozedurName sowie parameterListe gefuellt.
+*/
+bool URLParser::parseURL( Zeichenkette& method, 
+                          bool& istProzedur,
+                          Zeichenkette& urlPfad, 
+                          Zeichenkette& prozedurName,
+                          ParameterListeTyp& parameterListe)
 {
-    holeZeichen();
-    Zeichenkette httpMethode;
-    leseWortGB(httpMethode);
+    urlPfad = "";
 
-    if( !(httpMethode == "GET") )
+    holeZeichen();
+    
+    method.leere();
+    leseWortGB(method);
+
+    istProzedur = false;
+
+    if( !(method == "GET") )
     {
        return false;
     }
+    method = "GET";
     if( m_hatZeichen &&  (m_aktuellesZeichen == ' ') )
     {
         holeZeichen();
@@ -310,6 +333,7 @@ bool URLParser::parseURL()
 
     if( m_hatZeichen &&  (m_aktuellesZeichen == '/') )
     {
+        urlPfad.dazu('/');
         holeZeichen();
     }
     else return false;
@@ -317,21 +341,35 @@ bool URLParser::parseURL()
     bool erfolg;
     Zeichenkette pfadAnteil(20,erfolg);
     if(!erfolg) return false;
+
+    uint anzahlPfadAnteile(0);
     while( m_hatZeichen &&  (m_aktuellesZeichen != ' ') && (m_aktuellesZeichen != '?'))
-    {
-       
+    { 
+       pfadAnteil = "";
        leseWortMitPunkten(pfadAnteil);
        cout << "PA " << pfadAnteil.zkNT() << endl;
-       pfadAnteil.leere();
+       
+       urlPfad.dazu(pfadAnteil);
+       
        if( m_hatZeichen &&  (m_aktuellesZeichen == '/') )
        {
+           urlPfad.dazu('/');
            holeZeichen();
        }
+       anzahlPfadAnteile++;
+       if( anzahlPfadAnteile > 20 )
+       {
+          return false;
+       }
     }
+    parameterListe.loescheFeld();
     if( m_hatZeichen  && (m_aktuellesZeichen == '?') )
     {
        holeZeichen();
-       parseProzedurParameter();
+       istProzedur = true;
+       prozedurName = urlPfad;
+       urlPfad = "";
+       parseProzedurParameter(parameterListe);
     }
     if( m_hatZeichen &&  (m_aktuellesZeichen == ' ') )
     {
@@ -351,32 +389,82 @@ bool URLParser::parseURL()
 
 int main(int argc, char** argv)
 {
+   Zeichenkette method;
+   bool istProzedur;
+   Zeichenkette dateiPfad; 
+   Zeichenkette prozedurName;
+   bool erfolg;
+   ParameterListeTyp parameterListe(5,erfolg);
+
    URLParser urlparser("GET / HTTP/1.0");
-   assert(urlparser.parseURL());
+   assert(urlparser.parseURL(method,istProzedur,dateiPfad,prozedurName,parameterListe));
+   dateiPfad = "";
+   prozedurName = "";
+   parameterListe.loescheFeld();
+   
 
    URLParser urlparser2("GETX / HTTP/1.0");
-   assert(!urlparser2.parseURL());
+   assert(!urlparser2.parseURL(method,istProzedur,dateiPfad,prozedurName,parameterListe));
 
    URLParser urlparser3("GET/ HTTP/1.0");
-   assert(!urlparser3.parseURL());
+   assert(!urlparser3.parseURL(method,istProzedur,dateiPfad,prozedurName,parameterListe));
 
 
    URLParser urlparser4("GET/ HTTP/1.0");
-   assert(!urlparser4.parseURL());
+   assert(!urlparser4.parseURL(method,istProzedur,dateiPfad,prozedurName,parameterListe));
+   dateiPfad = "";
+   prozedurName = "";
+   parameterListe.loescheFeld();
 
    URLParser urlparser5("GET /index.html HTTP/1.0");
-   assert(urlparser5.parseURL());
+   assert(urlparser5.parseURL(method,istProzedur,dateiPfad,prozedurName,parameterListe) && (dateiPfad == "/index.html") && !istProzedur );
+
+   dateiPfad = "";
+   prozedurName = "";
+   parameterListe.loescheFeld();
 
    URLParser urlparser6("GET /verzeichnisB/index.html HTTP/1.0");
-   assert(urlparser6.parseURL());
+   erfolg = urlparser6.parseURL(method,istProzedur,dateiPfad,prozedurName,parameterListe);
+   assert( erfolg  && (dateiPfad == "/verzeichnisB/index.html") && !istProzedur);
+
+   dateiPfad = "";
+   prozedurName = "";
+   parameterListe.loescheFeld();
 
    URLParser urlparserPARAM("GET /rechne?A=15&B=177 HTTP/1.0");
-   assert(urlparserPARAM.parseURL());
+   assert(urlparserPARAM.parseURL(method,istProzedur,dateiPfad,prozedurName,parameterListe) && istProzedur);
+   assert( parameterListe.anzahl() == 2 );
+   Zeichenkette wert;
+   Zeichenkette schluessel;
+   schluessel = "A";
+   assert( parameterListe.finde(schluessel,wert) && (wert == "15") );
+   schluessel = "B";
+   assert( parameterListe.finde(schluessel,wert) && (wert == "177") );
+
+   dateiPfad = "";
+   prozedurName = "";
+   parameterListe.loescheFeld();
+
+    
+
 
    URLParser urlparserPARAM2("GET /register?Name=Heinz HTTP/1.0");
-   assert(urlparserPARAM2.parseURL());
+   assert(urlparserPARAM2.parseURL(method,istProzedur,dateiPfad,prozedurName,parameterListe));
+   assert( parameterListe.anzahl() == 1 );
+ 
+   schluessel = "Name";
+   assert( parameterListe.finde(schluessel,wert) && (wert == "Heinz") );
 
 
+   URLParser urlparserPARAM3("GET /rechne?A=15&B=177&C=6&D=1001 HTTP/1.0");
+   assert(urlparserPARAM3.parseURL(method,istProzedur,dateiPfad,prozedurName,parameterListe));
+
+   URLParser urlparserPARAM4("GET /rechne?A=15&B=177&&C=6&D=1001 HTTP/1.0");
+   assert( !urlparserPARAM4.parseURL(method,istProzedur,dateiPfad,prozedurName,parameterListe) );
+
+
+   URLParser urlparserPARAM5("GET /rechne?16=15&B=177&C=6&D=1001 HTTP/1.0");
+   assert( !urlparserPARAM5.parseURL(method,istProzedur,dateiPfad,prozedurName,parameterListe) );
 
    cout << "unit Test erfolgreich" << endl;
    return 1;

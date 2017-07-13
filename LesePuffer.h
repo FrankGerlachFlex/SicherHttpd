@@ -1,6 +1,10 @@
 #ifndef LESEPUFFER_H
 #define LESEPUFFER_H
 
+#include <sys/types.h>
+#include <sys/socket.h>
+
+
 
 /* Klasse zum effizienten, sicheren und komfortablen Einlesen von einem Socket */
 class Lesepuffer

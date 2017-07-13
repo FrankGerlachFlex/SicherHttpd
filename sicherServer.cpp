@@ -30,6 +30,10 @@ extern "C" {
 #include <stdlib.h>
 #include <iostream>
 #include "zk.h"
+//#include "ProzedurVerwalter.h"
+#include "Streufeld.h"
+#include "URLParser.h"
+#include "LesePuffer.h"
 
 using namespace std;
 
@@ -37,51 +41,7 @@ using namespace std;
 #define SNAME "Server: SicherServer\r\n"
 
 
-/* Klasse zum effizienten, sicheren und komfortablen Einlesen von einem Socket */
-class Lesepuffer
-{
-   char*    m_rohPuffer;
-   uint16_t m_kapazitaet;
-   uint16_t m_gueltig;
-   uint16_t m_leseZeiger;
-   int      m_socket;
-public:
-   Lesepuffer(int socket, bool& erfolg):m_kapazitaet(2000),
-                                        m_gueltig(0),
-                                        m_leseZeiger(0),
-                                        m_socket(socket)
-   {
-      m_rohPuffer = new char[m_kapazitaet];
-      erfolg = m_rohPuffer != NULL;        
-   }
 
-   char leseZeichen(bool& erfolg)
-   {
-      if( m_leseZeiger == m_gueltig )
-      {
-         int antwort = recv(m_socket,m_rohPuffer, m_kapazitaet, 0);
-         if( antwort < 1 )
-         {
-             erfolg = false;
-             return 0;
-         } 
-         else
-         {
-            m_gueltig = antwort;
-            m_leseZeiger = 0;
-         }
-      }
-      erfolg = true;
-      return m_rohPuffer[m_leseZeiger++];
-   }
-
-   ~Lesepuffer()
-   {
-      delete[] m_rohPuffer;
-      m_rohPuffer = NULL;
-   }
-
-};
 
 
 
@@ -172,6 +132,26 @@ bool istNormalZeichen(char z)
 }
 
 
+bool istZiffer(char z)
+{
+   switch(z)
+   {
+      case '0':
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9':return true;
+      default: return false;
+   }
+   return false;
+}
+
+
 /* stelle sicher, dass in der URL keine illegalen Zeichen oder
    Konstrukte, insbesondere ".." vorhanden sind.
 */
@@ -213,7 +193,7 @@ bool pruefeURL(const Zeichenkette& url)
 /* sende die gesamte Anzhal Oktets, blockiere bis
    vollstaendig gesendet
 */
-void sendAlles(int socket, char* puffer, uint16_t anzahl)
+void sendAlles(int socket, const char* puffer, uint16_t anzahl)
 {
    uint16_t anzGesendet = 0;
    do
@@ -233,7 +213,7 @@ void sendAlles(int socket, char* puffer, uint16_t anzahl)
 }
 
 /* sende eine Null-Terminierte Zeichenkette an die Gegenstelle */
-void sendAllesZK(int socket, char* pufferNT)
+void sendAllesZK(int socket, const char* pufferNT)
 {
   //cout << "sendAllesZK() " << pufferNT << endl;
   sendAlles(socket,pufferNT,strlen(pufferNT));
@@ -278,99 +258,213 @@ public:
 };
 
 
-/*arbeite die Anfrage auf einem Socket ab */
-void* arbeite(void* param) //int client)
+//Beispiel: /action_page.php?fname=Frank&lname=Gerlach
+
+bool leseEinenParameter(Zeichenkette& zk,uint16_t& stelle, Zeichenkette& name, Zeichenkette& wert)
 {
- long long clientLL = (long long)param;
- int client = clientLL;
- uint32_t numchars=0;
-
- SocketSchliesserHelfer sslh(client);
- 
-
- bool erfolg;
- Lesepuffer lesepuffer(client,erfolg);
-
- if(!erfolg)
- {
-   return NULL;
- } 
-
-  
- Zeichenkette ersteZeile(1025,erfolg);
- if(!erfolg)
- {
-    return NULL;
- }
-
- numchars = leseZeile(lesepuffer, ersteZeile,1024);
-
- Feld<Zeichenkette> spalten;
- spalten.resize(2);
-
- ersteZeile.spalteAuf(' ', spalten);
- 
- Zeichenkette methode = spalten[0];
- Zeichenkette url = spalten[1];
- 
-
- //cout << "methode: " << methode.zkNT() << endl;
-
- if ( ! ((methode == "GET") || (methode == "POST"))  )
- {
-     nichtRealisiert(client);
-     return NULL;
- }
-
- if ( methode == "POST")
- {
-      
- }
-
- 
-
- if( !pruefeURL(url) )
- {
-   printf("illegale URL\n");
-   return NULL;  
- }
-
- 
-
-   if( methode == "GET" )
+   if( stelle >= zk.laenge() )
    {
-    
-       Zeichenkette dateiPfad(50,erfolg);
-       if( !erfolg )
-       {
-         return NULL;
-       }
-       dateiPfad.dazu("/home/buero/htdocs");
-       dateiPfad.dazu(url);
+     return false;
+   }
+   while( (stelle < zk.laenge()) && (stelle < 16383) && (zk[stelle] != '=') )
+   {
+       name.dazu(zk[stelle++]);
+   }
+   stelle++;
+   while( (stelle < zk.laenge()) && (stelle < 16383) && (zk[stelle] != '&') )
+   {
+       wert.dazu(zk[stelle++]);
+   }
+   stelle++;
+   return true;
+}
 
-       if ( dateiPfad.letztesZeichenIst('/') )
+bool leseZahl(Zeichenkette& zk,uint64_t& zahl)
+{
+    zahl = 0;
+    if( zk.laenge() == 0)
+    {
+       return false;
+    }
+    char zeichen;
+    uint8_t stelle(0);
+    do
+    {
+       zeichen = zk[stelle++];
+       if( istZiffer(zeichen) )
        {
-          dateiPfad.dazu("index.html");
+          zahl += (zeichen - '0');
        }
-
-       struct stat st;
-       if (stat(dateiPfad.zkNT(), &st) == -1) 
+       else return false;
+       if( stelle < zk.laenge() )
        {
-           bool erfolg;
-           Zeichenkette zeile(1000, erfolg);
-           while ( numchars > 0 )  /* lese und verwerfe kopfZeilen */
-           {              
-              numchars = leseZeile(lesepuffer, zeile, 1000);
-              zeile.leere();
-           }
-           melde404(client);
+           zahl *= 10;
+       }
+       else break;
+    }
+    while( true );
+    return true;
+}
+
+bool verarbeiteProzedur(const Zeichenkette& prozedurName,const SFzkzk& parameterListe, int ausgabeSocket)
+{
+     //beispiel:
+     //rechne?A=15&B=177
+
+     cout << "verarbeiteProzedur()" << endl;
+
+     if( prozedurName == "/rechne" )
+     { 
+          bool erfolg;
+          Zeichenkette name(5,erfolg);
+          Zeichenkette wert(10,erfolg);
+          name = "A";
+          uint64_t paramA(0);
+          if( !parameterListe.finde(name,wert) || !leseZahl(wert,paramA) )
+          {
+              return false;
+          }
+          name = "B";
+          if( parameterListe.finde(name,wert) )
+          {
+              
+              uint64_t paramB(0);
+              if( !leseZahl(wert,paramB) )
+              {
+                  return false;
+              }
+              uint64_t ergebnis = paramA+paramB; 
+
+              bool erfolg;
+              Zeichenkette antwort(100,erfolg);
+              antwort.dazu("<html>\n"
+                           "  <body>\n "
+                           "    Das Ergebis ist: ");
+              antwort.dazuZahl(ergebnis);
+              antwort.dazu("</body></html>"); 
+              sendAllesZK(ausgabeSocket,antwort.zkNT());
+              return true;
+          }
+     }
+     return false;
+}
+
+
+
+
+bool verarbeiteDateiAnforderung(Lesepuffer& lesepuffer,Zeichenkette& url,int clientSocket)
+{
+    bool erfolg;
+    Zeichenkette dateiPfad(50,erfolg);
+    dateiPfad.dazu("/home/buero/htdocs");
+    dateiPfad.dazu(url);
+
+    if ( dateiPfad.letztesZeichenIst('/') )
+    {
+       dateiPfad.dazu("index.html");
+    }
+
+    struct stat st;
+    if (stat(dateiPfad.zkNT(), &st) == -1) 
+    {
+        bool erfolg;
+        Zeichenkette zeile(1000, erfolg);
+        int numchars(1);
+        while ( numchars > 0 )  /* lese und verwerfe kopfZeilen */
+        {              
+           numchars = leseZeile(lesepuffer, zeile, 1000);
+           zeile.leere();
+        }
+        melde404(clientSocket);
+        return false;
+    }
+    else
+    {
+        serve_file(lesepuffer,clientSocket, dateiPfad.zkNT());
+        return true;
+    }
+}
+
+
+int leseZeile(Lesepuffer& lesepuffer,Zeichenkette& zeile,int maxZeichen)
+{
+    bool erfolg;
+    int anzahl(0);
+    do
+    {
+       char zeichen = lesepuffer.leseZeichen(erfolg);
+       if( !erfolg  || (anzahl > maxZeichen) || (zeichen == '\n') )
+       {
+           break;
        }
        else
        {
-           serve_file(lesepuffer,client, dateiPfad.zkNT());
+           if( zeichen != '\r')
+           {
+              zeile.dazu(zeichen); 
+              anzahl++;
+           }
+           
        }
-   }
-   return NULL;
+    }
+    while( true );
+    
+    return anzahl;
+}
+
+
+/*arbeite die Anfrage auf einem Socket ab */
+void* arbeite(void* param) //int client)
+{
+    long long clientLL = (long long)param;
+    int clientSocket = clientLL;
+     
+
+    SocketSchliesserHelfer sslh(clientSocket);
+    
+
+    bool erfolg;
+    Lesepuffer lesepuffer(clientSocket,erfolg);
+    
+    Zeichenkette ersteZeile(1025,erfolg);
+     
+    Zeichenkette methode;
+    bool istProzedur;
+    Zeichenkette prozedurName;
+     
+    SFzkzk parameterListe(5,erfolg);
+    URLParser urlparser(&lesepuffer);
+    Zeichenkette urlPfad(20,erfolg);
+
+    if( !urlparser.parseURL(methode,istProzedur,urlPfad,prozedurName,parameterListe) )
+    {
+       cout << "bad first HTTP line" << endl;
+       return NULL;
+    }
+
+    cout << "methode: " << methode.zkNT() << endl;
+
+    if ( ! ((methode == "GET") || (methode == "POST"))  )
+    { 
+        return NULL;
+    }
+
+    if( methode == "GET" )
+    {
+       if( istProzedur )
+       {
+          verarbeiteProzedur(prozedurName,parameterListe,clientSocket);
+       }
+       else
+       {
+          verarbeiteDateiAnforderung(lesepuffer,urlPfad,clientSocket);
+       }          
+    }
+    else
+    {
+       nichtRealisiert(clientSocket);
+    }
+    return NULL;
 }
 
 void fehlermeldung(int client)
@@ -409,49 +503,8 @@ void fatalerFehler(const char *sc)
    sicherSturz(sc);
 }
 
-/* lese eine Zeile des HTTP-Protokolls ein */
-int leseZeile(Lesepuffer& lesepuffer, Zeichenkette& zeichenkette, int size)
-{
-    bool erfolg;
-    char zeichen = lesepuffer.leseZeichen(erfolg);
-    int ausgabeZeiger(0);
-    if(!erfolg)
-    {
-      return -1;
-    }
-    do
-    {
-       if( zeichen == '\r' )
-       {
-          zeichen = lesepuffer.leseZeichen(erfolg);
-          if(!erfolg || (zeichen != '\n') )
-          {
-            return -1;
-          } 
-       }   
-       else
-       {
-          if( ausgabeZeiger < size )
-          {
-             zeichenkette.dazu(zeichen); 
-             ausgabeZeiger++;              
-          }
-          else
-          {
-            return -1;
-          }
-          zeichen = lesepuffer.leseZeichen(erfolg);
-          if(!erfolg)
-          {
-            return -1;
-          } 
-       } 
-         
-    }
-    while(zeichen != '\n');
-
-    return zeichenkette.laenge();
-}
+ 
+ 
 
 int fahreHoch(u_short *port)
 {
@@ -463,6 +516,14 @@ int fahreHoch(u_short *port)
     {
       fatalerFehler("socket");
     }
+
+    int reuse = 1;
+    if (setsockopt(acceptPort, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) < 0)
+    {
+        perror("setsockopt(SO_REUSEADDR) failed");
+    }
+
+
     memset(&name, 0, sizeof(name));
     name.sin_family = AF_INET;
     name.sin_port = htons(*port);
@@ -475,12 +536,14 @@ int fahreHoch(u_short *port)
     {
         socklen_t namelen = sizeof(name);
         if (getsockname(acceptPort, (struct sockaddr *)&name, &namelen) == -1)
-         fatalerFehler("getsockname");
+        {
+            fatalerFehler("getsockname");
+        }
         *port = ntohs(name.sin_port);
     }
     if (listen(acceptPort, 5) < 0)
     {
-     fatalerFehler("listen");
+        fatalerFehler("listen");
     }
     return acceptPort;
 }
@@ -557,7 +620,7 @@ void serve_file(Lesepuffer& lesepuffer,int clientSocket, const char *filename)
 int main(void)
 {
  int server_sock = -1;
- u_short port = 8204;
+ u_short port = 8000;
  int client_sock = -1;
  struct sockaddr_in client_name;
  socklen_t client_name_len = sizeof(client_name);
