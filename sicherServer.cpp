@@ -30,10 +30,11 @@ extern "C" {
 #include <stdlib.h>
 #include <iostream>
 #include "zk.h"
-//#include "ProzedurVerwalter.h"
+#include "ProzedurVerwalter.h"
 #include "Streufeld.h"
 #include "URLParser.h"
 #include "LesePuffer.h"
+#include "socketNuetzlich.h"
 
 using namespace std;
 
@@ -56,6 +57,9 @@ void melde404(int);
 void serve_file(Lesepuffer&,int, const char *);
 int fahreHoch(u_short *);
 void nichtRealisiert(int);
+extern void meldeProzedurenAn();
+
+ProzedurVerwalter g_prozedurVerwalter;
 
 #define leerzeichen(x) isspace((int)(x))
 
@@ -132,24 +136,7 @@ bool istNormalZeichen(char z)
 }
 
 
-bool istZiffer(char z)
-{
-   switch(z)
-   {
-      case '0':
-      case '1':
-      case '2':
-      case '3':
-      case '4':
-      case '5':
-      case '6':
-      case '7':
-      case '8':
-      case '9':return true;
-      default: return false;
-   }
-   return false;
-}
+
 
 
 /* stelle sicher, dass in der URL keine illegalen Zeichen oder
@@ -190,34 +177,7 @@ bool pruefeURL(const Zeichenkette& url)
    return true; 
 }
 
-/* sende die gesamte Anzhal Oktets, blockiere bis
-   vollstaendig gesendet
-*/
-void sendAlles(int socket, const char* puffer, uint16_t anzahl)
-{
-   uint16_t anzGesendet = 0;
-   do
-   {
-      int ergebnis = send(socket,puffer,anzahl,0);
-      if( ergebnis < 1 )
-      {
-        return; // fehler, Verbindung abgebrochen ?
-      }
-      else
-      {
-         anzGesendet += ergebnis;
-      }
-   }
-   while(anzGesendet < anzahl);
 
-}
-
-/* sende eine Null-Terminierte Zeichenkette an die Gegenstelle */
-void sendAllesZK(int socket, const char* pufferNT)
-{
-  //cout << "sendAllesZK() " << pufferNT << endl;
-  sendAlles(socket,pufferNT,strlen(pufferNT));
-}
 
 
 
@@ -279,74 +239,18 @@ bool leseEinenParameter(Zeichenkette& zk,uint16_t& stelle, Zeichenkette& name, Z
    return true;
 }
 
-bool leseZahl(Zeichenkette& zk,uint64_t& zahl)
-{
-    zahl = 0;
-    if( zk.laenge() == 0)
-    {
-       return false;
-    }
-    char zeichen;
-    uint8_t stelle(0);
-    do
-    {
-       zeichen = zk[stelle++];
-       if( istZiffer(zeichen) )
-       {
-          zahl += (zeichen - '0');
-       }
-       else return false;
-       if( stelle < zk.laenge() )
-       {
-           zahl *= 10;
-       }
-       else break;
-    }
-    while( true );
-    return true;
-}
+
 
 bool verarbeiteProzedur(const Zeichenkette& prozedurName,const SFzkzk& parameterListe, int ausgabeSocket)
 {
-     //beispiel:
-     //rechne?A=15&B=177
-
      cout << "verarbeiteProzedur()" << endl;
 
-     if( prozedurName == "/rechne" )
-     { 
-          bool erfolg;
-          Zeichenkette name(5,erfolg);
-          Zeichenkette wert(10,erfolg);
-          name = "A";
-          uint64_t paramA(0);
-          if( !parameterListe.finde(name,wert) || !leseZahl(wert,paramA) )
-          {
-              return false;
-          }
-          name = "B";
-          if( parameterListe.finde(name,wert) )
-          {
-              
-              uint64_t paramB(0);
-              if( !leseZahl(wert,paramB) )
-              {
-                  return false;
-              }
-              uint64_t ergebnis = paramA+paramB; 
-
-              bool erfolg;
-              Zeichenkette antwort(100,erfolg);
-              antwort.dazu("<html>\n"
-                           "  <body>\n "
-                           "    Das Ergebis ist: ");
-              antwort.dazuZahl(ergebnis);
-              antwort.dazu("</body></html>"); 
-              sendAllesZK(ausgabeSocket,antwort.zkNT());
-              return true;
-          }
+     if( !g_prozedurVerwalter.fuehreAus(prozedurName,parameterListe,ausgabeSocket) )
+     {
+         fehlermeldung(ausgabeSocket);
+         return false;
      }
-     return false;
+     return true;
 }
 
 
@@ -467,20 +371,20 @@ void* arbeite(void* param) //int client)
     return NULL;
 }
 
-void fehlermeldung(int client)
+void fehlermeldung(int clientSocket)
 {
     char buf[1024];
 
     sprintf(buf, "HTTP/1.0 400 BAD REQUEST\r\n");
-    sendAllesZK(client, buf);
+    sendAllesZK(clientSocket, buf);
     sprintf(buf, "Content-type: text/html\r\n");
-    sendAllesZK(client, buf);
+    sendAllesZK(clientSocket, buf);
     sprintf(buf, "\r\n");
-    sendAllesZK(client, buf);
+    sendAllesZK(clientSocket, buf);
     sprintf(buf, "<P>Your browser sent a bad request, ");
-    sendAllesZK(client, buf);
+    sendAllesZK(clientSocket, buf);
     sprintf(buf, "such as a POST without a Content-Length.\r\n");
-    sendAllesZK(client, buf);
+    sendAllesZK(clientSocket, buf);
 }
 
 
@@ -545,6 +449,9 @@ int fahreHoch(u_short *port)
     {
         fatalerFehler("listen");
     }
+
+    meldeProzedurenAn();
+
     return acceptPort;
 }
 
