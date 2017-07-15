@@ -182,26 +182,16 @@ bool pruefeURL(const Zeichenkette& url)
 
 
 
-void nichtRealisiert(int client)
+void nichtRealisiert(int clientSocket)
 {
-	char buf[1024];
-
-	sprintf(buf, "HTTP/1.0 501 Method Not Implemented\r\n");
-	sendAllesZK(client, buf);
-	sprintf(buf, SNAME);
-	sendAllesZK(client, buf);
-	sprintf(buf, "Content-Type: text/html\r\n");
-	sendAllesZK(client, buf);
-	sprintf(buf, "\r\n");
-	sendAllesZK(client, buf);
-	sprintf(buf, "<HTML><HEAD><TITLE>Method Not Implemented\r\n");
-	sendAllesZK(client, buf);
-	sprintf(buf, "</TITLE></HEAD>\r\n");
-	sendAllesZK(client, buf);
-	sprintf(buf, "<BODY><P>HTTP request method not supported.\r\n");
-	sendAllesZK(client, buf);
-	sprintf(buf, "</BODY></HTML>\r\n");
-	sendAllesZK(client, buf);
+	Zeichenkette antwort;
+	antwort.dazu("HTTP/1.0 501 Method Not Implemented\r\n" 	 
+	             "Content-Type: text/html\r\n\r\n"
+                "<HTML><HEAD><TITLE>Method Not Implemented\r\n"	 
+                "</TITLE></HEAD>\r\n"
+                "<BODY><P>HTTP request method not supported.\r\n"
+                "</BODY></HTML>\r\n");
+	sendAlles(clientSocket,antwort.zkNT(),antwort.laenge());
 }
 
 class SocketSchliesserHelfer
@@ -241,7 +231,9 @@ bool leseEinenParameter(Zeichenkette& zk,uint16_t& stelle, Zeichenkette& name, Z
 
 
 
-bool verarbeiteProzedur(const Zeichenkette& prozedurName,const SFzkzk& parameterListe, int ausgabeSocket)
+bool verarbeiteProzedur(const Zeichenkette& prozedurName,
+                        const SFzkzk& parameterListe, 
+                        int ausgabeSocket)
 {
      cout << "verarbeiteProzedur()" << endl;
 
@@ -348,11 +340,6 @@ void* arbeite(void* param) //int client)
 
     cout << "methode: " << methode.zkNT() << endl;
 
-    if ( ! ((methode == "GET") || (methode == "POST"))  )
-    { 
-        return NULL;
-    }
-
     if( methode == "GET" )
     {
        if( istProzedur )
@@ -373,32 +360,27 @@ void* arbeite(void* param) //int client)
 
 void fehlermeldung(int clientSocket)
 {
-    char buf[1024];
-
-    sprintf(buf, "HTTP/1.0 400 BAD REQUEST\r\n");
-    sendAllesZK(clientSocket, buf);
-    sprintf(buf, "Content-type: text/html\r\n");
-    sendAllesZK(clientSocket, buf);
-    sprintf(buf, "\r\n");
-    sendAllesZK(clientSocket, buf);
-    sprintf(buf, "<P>Your browser sent a bad request, ");
-    sendAllesZK(clientSocket, buf);
-    sprintf(buf, "such as a POST without a Content-Length.\r\n");
-    sendAllesZK(clientSocket, buf);
+    Zeichenkette antwort;
+    antwort.dazu("HTTP/1.0 400 BAD REQUEST\r\n"
+                 "Content-type: text/html\r\n"     
+                 "\r\n"
+                 "<P>Your browser sent a bad request, "
+                 "such as a POST without a Content-Length.\r\n");
+    sendAlles( clientSocket, antwort.zkNT(),antwort.laenge() );
 }
 
 
 //TODO: Binaere Datei ???
 void sendeDatei(int client, FILE *resource)
 {
- char buf[1024];
+    char buf[1024];
 
- fgets(buf, sizeof(buf), resource);
- while (!feof(resource))
- {
-  sendAllesZK(client, buf);
-  fgets(buf, sizeof(buf), resource);
- }
+    fgets(buf, sizeof(buf), resource);
+    while (!feof(resource))
+    {
+       sendAllesZK(client, buf);
+       fgets(buf, sizeof(buf), resource);
+    }
 }
 
 
@@ -455,68 +437,54 @@ int fahreHoch(u_short *port)
     return acceptPort;
 }
 
-void kopfZeilen(int client, const char *filename)
+void kopfZeilen(int clientSocket, const char *filename)
 {
- char buf[1024];
- (void)filename;  /* could use filename to determine file type */
-
- strcpy(buf, "HTTP/1.0 200 OK\r\n");
- sendAllesZK(client, buf);
- strcpy(buf, SNAME);
- sendAllesZK(client, buf);
- sprintf(buf, "Content-Type: text/html\r\n");
- sendAllesZK(client, buf);
- strcpy(buf, "\r\n");
- sendAllesZK(client, buf);
+    Zeichenkette antwort;
+    antwort.dazu("HTTP/1.0 200 OK\r\n"
+                 "Content-Type: text/html\r\n"
+                 "\r\n");
+    sendAlles(clientSocket, antwort.zkNT(),antwort.laenge());
 }
 
  
-void melde404(int client)
+void melde404(int clientSocket)
 {
-    char buf[1024];
-
-    sprintf(buf, "HTTP/1.0 404 NOT FOUND\r\n");
-    sendAllesZK(client, buf);
-    sprintf(buf, SNAME);
-    sendAllesZK(client, buf);
-    sprintf(buf, "Content-Type: text/html\r\n");
-    sendAllesZK(client, buf);
-    sprintf(buf, "\r\n");
-    sendAllesZK(client, buf);
-    sprintf(buf, "<HTML><TITLE>Not Found</TITLE>\r\n");
-    sendAllesZK(client, buf);
-    sprintf(buf, "<BODY><P>The server could not find the file\r\n");
-    sendAllesZK(client, buf);
-    sprintf(buf, "</BODY></HTML>\r\n");
-    sendAllesZK(client, buf);
+    Zeichenkette antwort;
+    antwort.dazu("HTTP/1.0 404 NOT FOUND\r\n"     
+                 "Content-Type: text/html\r\n"
+                 "\r\n"
+                 "<HTML><TITLE>Not Found</TITLE>\r\n"
+                 "<BODY><P>The server could not find the file\r\n"
+                 "</BODY></HTML>\r\n");
+    sendAlles( clientSocket, antwort.zkNT(),antwort.laenge() );
 }
 
 /* Schicke eine Datei zum Webbrowser */
 void serve_file(Lesepuffer& lesepuffer,int clientSocket, const char *filename)
 {
- FILE *resource = NULL;
- int numchars = 1;
- 
- bool erfolg(false);
- Zeichenkette zeile(1000,erfolg);
+    FILE *resource = NULL;
+    int numchars = 1;
+    
+    bool erfolg(false);
+    Zeichenkette zeile(1000,erfolg);
 
- while ( numchars > 0 )  /* read & discard kopfZeilen */
- {  
-   numchars = leseZeile(lesepuffer, zeile, 1000);
-   zeile.leere();
- }
+    while ( numchars > 0 )  /* read & discard kopfZeilen */
+    {  
+      numchars = leseZeile(lesepuffer, zeile, 1000);
+      zeile.leere();
+    }
 
- resource = fopen(filename, "r");
- if (resource == NULL)
- {
-     melde404(clientSocket);
- }
- else
- {
-    kopfZeilen(clientSocket, filename); 
-    sendeDatei(clientSocket, resource);
- }
- fclose(resource);
+    resource = fopen(filename, "r");
+    if (resource == NULL)
+    {
+        melde404(clientSocket);
+    }
+    else
+    {
+       kopfZeilen(clientSocket, filename); 
+       sendeDatei(clientSocket, resource);
+    }
+    fclose(resource);
 }
 
 
@@ -526,34 +494,34 @@ void serve_file(Lesepuffer& lesepuffer,int clientSocket, const char *filename)
 
 int main(void)
 {
- int server_sock = -1;
- u_short port = 8000;
- int client_sock = -1;
- struct sockaddr_in client_name;
- socklen_t client_name_len = sizeof(client_name);
- pthread_t newthread;
+    int server_sock = -1;
+    u_short port = 8000;
+    int client_sock = -1;
+    struct sockaddr_in client_name;
+    socklen_t client_name_len = sizeof(client_name);
+    pthread_t newthread;
 
- server_sock = fahreHoch(&port);
- printf("httpd running on port %d\n", port);
+    server_sock = fahreHoch(&port);
+    printf("httpd running on port %d\n", port);
 
- while (1)
- {
-   client_sock = accept(server_sock,
-                       (struct sockaddr *)&client_name,
-                       &client_name_len);
-   if (client_sock == -1)
-   {
-     perror("accept failed");
-   }
+    while (1)
+    {
+      client_sock = accept(server_sock,
+                          (struct sockaddr *)&client_name,
+                          &client_name_len);
+      if (client_sock == -1)
+      {
+        perror("accept failed");
+      }
 
-   long long client_sockLL = client_sock;
-   if (pthread_create(&newthread , NULL, arbeite, (void*) client_sockLL) != 0)
-   {
-      perror("pthread_create");
-   }
- }
+      long long client_sockLL = client_sock;
+      if (pthread_create(&newthread , NULL, arbeite, (void*) client_sockLL) != 0)
+      {
+         perror("pthread_create");
+      }
+    }
 
- close(server_sock);
+    close(server_sock);
 
- return(0);
+    return(0);
 }
