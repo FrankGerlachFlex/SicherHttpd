@@ -8,32 +8,37 @@
 #include "feld.h"
 
 
+/* Beispiel einer sicherHttpd Prozedur (Zerlegen einer Zahl in die Primfaktoren) */
 
-void zerlegeZahl(uint64_t zahl, Feld<uint64_t>& primFaktoren)
-{
-    uint64_t wurzel = sqrt(zahl);
-    uint64_t probeZahl = 2;
-    while( wurzel >= probeZahl )
-    {
-        while( (zahl % probeZahl) == 0 )
-        {
-            primFaktoren.push_back(probeZahl);
-            zahl /= probeZahl;
-            wurzel = sqrt(zahl);
-        } 
-        probeZahl++;
-    }   
-    if( zahl > 1 )
-    {
-      primFaktoren.push_back(zahl);
-    }
-}
+
+
 
 
 class Primzahlen: public AbstrakteProzedur
 {
    
 public:
+
+   static void zerlegeZahl(uint64_t zahl, Feld<uint64_t>& primFaktoren)
+   {
+       uint64_t wurzel = sqrt(zahl);
+       uint64_t probeZahl = 2;
+       while( wurzel >= probeZahl )
+       {
+           while( (zahl % probeZahl) == 0 )
+           {
+               primFaktoren.push_back(probeZahl);
+               zahl /= probeZahl;
+               wurzel = sqrt(zahl);
+           } 
+           probeZahl++;
+       }   
+       if( zahl > 1 )
+       {
+         primFaktoren.push_back(zahl);
+       }
+   }
+
    virtual bool verarbeite(const ParameterListeTyp& parameterListe,int ausgabeSocket)
    {
        Feld<uint64_t> primZahlen;
