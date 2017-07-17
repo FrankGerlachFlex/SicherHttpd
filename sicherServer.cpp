@@ -49,12 +49,12 @@ using namespace std;
 
 void* arbeite(void* param);
 void fehlermeldung(int);
-void sendeDatei(int, FILE *);
+ 
 void fatalerFehler(const char *);
-int leseZeile(Lesepuffer& lesepuffer, Zeichenkette& zeichenkette, int);
-void kopfZeilen(int, const char *);
-void melde404(int);
-void serve_file(Lesepuffer&,int, const char *);
+ 
+ 
+ 
+ 
 int fahreHoch(u_short *);
 void nichtRealisiert(int);
 extern void meldeProzedurenAn();
@@ -63,136 +63,7 @@ ProzedurVerwalter g_prozedurVerwalter;
 
 #define leerzeichen(x) isspace((int)(x))
 
-bool istNormalZeichen(char z)
-{
-   switch(z)
-   {
-      case 'a':
-      case 'b':
-      case 'c':
-      case 'd':
-      case 'e':
-      case 'f':
-      case 'g':
-      case 'h':
-      case 'i':
-      case 'j':
-      case 'k':
-      case 'l':
-      case 'm':
-      case 'n':
-      case 'o':
-      case 'p':
-      case 'q':
-      case 'r':
-      case 's':
-      case 't':
-      case 'u':
-      case 'v':
-      case 'w':
-      case 'x':
-      case 'y':
-      case 'z':
-      case 'A':
-      case 'B':
-      case 'C':
-      case 'D':
-      case 'E':
-      case 'F':
-      case 'G':
-      case 'H':
-      case 'I':
-      case 'J':
-      case 'K':
-      case 'L':
-      case 'M':
-      case 'N':
-      case 'O':
-      case 'P':
-      case 'Q':
-      case 'R':
-      case 'S':
-      case 'T':
-      case 'U':
-      case 'V':
-      case 'W':
-      case 'X':
-      case 'Y':
-      case 'Z':
-      case '0':
-      case '1':
-      case '2':
-      case '3':
-      case '4':
-      case '5':
-      case '6':
-      case '7':
-      case '8':
-      case '9':
-      case '/':return true;
-      default: return false;
-   }
-   return false;
-}
 
-
-
-
-
-/* stelle sicher, dass in der URL keine illegalen Zeichen oder
-   Konstrukte, insbesondere ".." vorhanden sind.
-*/
-bool pruefeURL(const Zeichenkette& url)
-{
-   if( url.laenge() == 0 )
-   {
-      return false;
-   }
-   uint16_t zeiger = 0;
-   char zeichen = url[zeiger++]; 
-  
-   while( true )
-   {
-       if( !istNormalZeichen(zeichen) )
-       {
-          if( zeichen == '.' )
-          {
-             zeichen = url[zeiger++];
-             if( zeichen && !istNormalZeichen(zeichen) )
-             {
-               return false;
-             } 
-          }
-          else return false;
-       }
-       else
-       {
-         if( zeiger == url.laenge() )
-         {
-           break;
-         }
-         zeichen = url[zeiger++];
-       }
-   }
-   return true; 
-}
-
-
-
-
-
-
-void nichtRealisiert(int clientSocket)
-{
-	Zeichenkette antwort;
-	antwort.dazu("HTTP/1.0 501 Method Not Implemented\r\n" 	 
-	             "Content-Type: text/html\r\n\r\n"
-                "<HTML><HEAD><TITLE>Method Not Implemented\r\n"	 
-                "</TITLE></HEAD>\r\n"
-                "<BODY><P>HTTP request method not supported.\r\n"
-                "</BODY></HTML>\r\n");
-	sendAlles(clientSocket,antwort.zkNT(),antwort.laenge());
-}
 
 class SocketSchliesserHelfer
 {
@@ -208,105 +79,238 @@ public:
 };
 
 
-//Beispiel: /action_page.php?fname=Frank&lname=Gerlach
 
-bool leseEinenParameter(Zeichenkette& zk,uint16_t& stelle, Zeichenkette& name, Zeichenkette& wert)
+
+class HTTPVerarbeiter
 {
-   if( stelle >= zk.laenge() )
+   int m_clientSocket;
+   Lesepuffer* m_lesepuffer;
+
+   void nichtRealisiert()
    {
-     return false;
+	   Zeichenkette antwort;
+	   antwort.dazu("HTTP/1.0 501 Method Not Implemented\r\n" 	 
+	                "Content-Type: text/html\r\n\r\n"
+                   "<HTML><HEAD><TITLE>Method Not Implemented\r\n"	 
+                   "</TITLE></HEAD>\r\n"
+                   "<BODY><P>HTTP request method not supported.\r\n"
+                   "</BODY></HTML>\r\n");
+	   sendAlles(m_clientSocket,antwort.zkNT(),antwort.laenge());
    }
-   while( (stelle < zk.laenge()) && (stelle < 16383) && (zk[stelle] != '=') )
+
+
+   bool verarbeiteProzedur(const Zeichenkette& prozedurName,
+                           const SFzkzk& parameterListe)
    {
-       name.dazu(zk[stelle++]);
-   }
-   stelle++;
-   while( (stelle < zk.laenge()) && (stelle < 16383) && (zk[stelle] != '&') )
-   {
-       wert.dazu(zk[stelle++]);
-   }
-   stelle++;
-   return true;
-}
+        cout << "verarbeiteProzedur()" << endl;
 
-
-
-bool verarbeiteProzedur(const Zeichenkette& prozedurName,
-                        const SFzkzk& parameterListe, 
-                        int ausgabeSocket)
-{
-     cout << "verarbeiteProzedur()" << endl;
-
-     if( !g_prozedurVerwalter.fuehreAus(prozedurName,parameterListe,ausgabeSocket) )
-     {
-         fehlermeldung(ausgabeSocket);
-         return false;
-     }
-     return true;
-}
-
-
-
-
-bool verarbeiteDateiAnforderung(Lesepuffer& lesepuffer,Zeichenkette& url,int clientSocket)
-{
-    bool erfolg;
-    Zeichenkette dateiPfad(50,erfolg);
-    dateiPfad.dazu("/home/buero/htdocs");
-    dateiPfad.dazu(url);
-
-    if ( dateiPfad.letztesZeichenIst('/') )
-    {
-       dateiPfad.dazu("index.html");
-    }
-
-    struct stat st;
-    if (stat(dateiPfad.zkNT(), &st) == -1) 
-    {
-        bool erfolg;
-        Zeichenkette zeile(1000, erfolg);
-        int numchars(1);
-        while ( numchars > 0 )  /* lese und verwerfe kopfZeilen */
-        {              
-           numchars = leseZeile(lesepuffer, zeile, 1000);
-           zeile.leere();
+        if( !g_prozedurVerwalter.fuehreAus(prozedurName,parameterListe,m_clientSocket) )
+        {
+            fehlermeldung();
+            return false;
         }
-        melde404(clientSocket);
-        return false;
-    }
-    else
-    {
-        serve_file(lesepuffer,clientSocket, dateiPfad.zkNT());
         return true;
-    }
-}
+   }
 
 
-int leseZeile(Lesepuffer& lesepuffer,Zeichenkette& zeile,int maxZeichen)
-{
-    bool erfolg;
-    int anzahl(0);
-    do
-    {
-       char zeichen = lesepuffer.leseZeichen(erfolg);
-       if( !erfolg  || (anzahl > maxZeichen) || (zeichen == '\n') )
+
+
+   bool verarbeiteDateiAnforderung(Zeichenkette& url)
+   {
+       bool erfolg;
+       Zeichenkette dateiPfad(50,erfolg);
+       dateiPfad.dazu("/home/buero/htdocs");
+       dateiPfad.dazu(url);
+
+       if ( dateiPfad.letztesZeichenIst('/') )
        {
-           break;
+          dateiPfad.dazu("index.html");
+       }
+
+       struct stat st;
+       if (stat(dateiPfad.zkNT(), &st) == -1) 
+       {
+           bool erfolg;
+           Zeichenkette zeile(1000, erfolg);
+           int numchars(1);
+           while ( numchars > 0 )  /* lese und verwerfe kopfZeilen */
+           {              
+              numchars = leseZeile(zeile, 1000);
+              zeile.leere();
+           }
+           melde404();
+           return false;
        }
        else
        {
-           if( zeichen != '\r')
-           {
-              zeile.dazu(zeichen); 
-              anzahl++;
-           }
-           
+           serve_file(dateiPfad.zkNT());
+           return true;
        }
-    }
-    while( true );
+   }
+
+   //todo:entfernen
+   int leseZeile(Zeichenkette& zeile,int maxZeichen)
+   {
+       bool erfolg;
+       int anzahl(0);
+       do
+       {
+          char zeichen = m_lesepuffer->leseZeichen(erfolg);
+          if( !erfolg  || (anzahl > maxZeichen) || (zeichen == '\n') )
+          {
+              break;
+          }
+          else
+          {
+              if( zeichen != '\r')
+              {
+                 zeile.dazu(zeichen); 
+                 anzahl++;
+              }
+              
+          }
+       }
+       while( true );
+       
+       return anzahl;
+   }
+
+   void fehlermeldung()
+   {
+       Zeichenkette antwort;
+       antwort.dazu("HTTP/1.0 400 BAD REQUEST\r\n"
+                    "Content-type: text/html\r\n"     
+                    "\r\n"
+                    "<P>Your browser sent a bad request, "
+                    "such as a POST without a Content-Length.\r\n");
+       sendAlles( m_clientSocket, antwort.zkNT(),antwort.laenge() );
+   }
+
+
+   //TODO: Binaere Datei ???
+   void sendeDatei(FILE *resource)
+   {
+       char buf[1024];
+
+       fgets(buf, sizeof(buf), resource);
+       while (!feof(resource))
+       {
+          sendAllesZK(m_clientSocket, buf);
+          fgets(buf, sizeof(buf), resource);
+       }
+   }
+
+   void kopfZeilen( const char *filename)
+   {
+       Zeichenkette antwort;
+       antwort.dazu("HTTP/1.0 200 OK\r\n"
+                    "Content-Type: text/html\r\n"
+                    "\r\n");
+       sendAlles(m_clientSocket, antwort.zkNT(),antwort.laenge());
+   }
+
     
-    return anzahl;
-}
+   void melde404()
+   {
+       Zeichenkette antwort;
+       antwort.dazu("HTTP/1.0 404 NOT FOUND\r\n"     
+                    "Content-Type: text/html\r\n"
+                    "\r\n"
+                    "<HTML><TITLE>Not Found</TITLE>\r\n"
+                    "<BODY><P>The server could not find the file\r\n"
+                    "</BODY></HTML>\r\n");
+       sendAlles( m_clientSocket, antwort.zkNT(),antwort.laenge() );
+   }
+
+   /* Schicke eine Datei zum Webbrowser */
+   void serve_file(const char *filename)
+   {
+       FILE *resource = NULL;
+       int numchars = 1;
+       
+       bool erfolg(false);
+       Zeichenkette zeile(1000,erfolg);
+
+       while ( numchars > 0 )  /* read & discard kopfZeilen */
+       {  
+         numchars = leseZeile(zeile, 1000);
+         zeile.leere();
+       }
+
+       resource = fopen(filename, "r");
+       if (resource == NULL)
+       {
+           melde404();
+       }
+       else
+       {
+          kopfZeilen(filename); 
+          sendeDatei(resource);
+       }
+       fclose(resource);
+   }
+
+   bool leseKopfzeilen()
+   {
+      return true;
+   }
+
+
+
+
+public:
+   HTTPVerarbeiter(int clientSocket):m_clientSocket(clientSocket),m_lesepuffer(NULL)
+   {}
+
+
+   void verarbeiteAnfrage()
+   {
+       bool erfolg;
+       m_lesepuffer = new Lesepuffer(m_clientSocket,erfolg);
+
+       if( m_lesepuffer == NULL )
+       {
+         sicherSturz("kein Speicher");
+       }
+       
+       Zeichenkette ersteZeile(1025,erfolg);
+        
+       Zeichenkette methode;
+       bool istProzedur;
+       Zeichenkette prozedurName;
+        
+       SFzkzk parameterListe(5,erfolg);
+       URLParser urlparser(m_lesepuffer);
+       Zeichenkette urlPfad(20,erfolg);
+
+       if( !urlparser.parseURL(methode,istProzedur,urlPfad,prozedurName,parameterListe) )
+       {
+          cout << "bad first HTTP line" << endl;
+          return ;
+       }
+
+       cout << "methode: " << methode.zkNT() << endl;
+
+       if( methode == "GET" )
+       {
+          if( istProzedur )
+          {
+             verarbeiteProzedur(prozedurName,parameterListe);
+          }
+          else
+          {
+             verarbeiteDateiAnforderung(urlPfad);
+          }          
+       }
+       else
+       {
+          nichtRealisiert();
+       }
+   }
+
+
+
+};
 
 
 /*arbeite die Anfrage auf einem Socket ab */
@@ -315,73 +319,15 @@ void* arbeite(void* param) //int client)
     long long clientLL = (long long)param;
     int clientSocket = clientLL;
      
-
     SocketSchliesserHelfer sslh(clientSocket);
+
+    HTTPVerarbeiter httpVerarbeiter(clientSocket);
+    httpVerarbeiter.verarbeiteAnfrage();
     
-
-    bool erfolg;
-    Lesepuffer lesepuffer(clientSocket,erfolg);
-    
-    Zeichenkette ersteZeile(1025,erfolg);
-     
-    Zeichenkette methode;
-    bool istProzedur;
-    Zeichenkette prozedurName;
-     
-    SFzkzk parameterListe(5,erfolg);
-    URLParser urlparser(&lesepuffer);
-    Zeichenkette urlPfad(20,erfolg);
-
-    if( !urlparser.parseURL(methode,istProzedur,urlPfad,prozedurName,parameterListe) )
-    {
-       cout << "bad first HTTP line" << endl;
-       return NULL;
-    }
-
-    cout << "methode: " << methode.zkNT() << endl;
-
-    if( methode == "GET" )
-    {
-       if( istProzedur )
-       {
-          verarbeiteProzedur(prozedurName,parameterListe,clientSocket);
-       }
-       else
-       {
-          verarbeiteDateiAnforderung(lesepuffer,urlPfad,clientSocket);
-       }          
-    }
-    else
-    {
-       nichtRealisiert(clientSocket);
-    }
     return NULL;
 }
 
-void fehlermeldung(int clientSocket)
-{
-    Zeichenkette antwort;
-    antwort.dazu("HTTP/1.0 400 BAD REQUEST\r\n"
-                 "Content-type: text/html\r\n"     
-                 "\r\n"
-                 "<P>Your browser sent a bad request, "
-                 "such as a POST without a Content-Length.\r\n");
-    sendAlles( clientSocket, antwort.zkNT(),antwort.laenge() );
-}
 
-
-//TODO: Binaere Datei ???
-void sendeDatei(int client, FILE *resource)
-{
-    char buf[1024];
-
-    fgets(buf, sizeof(buf), resource);
-    while (!feof(resource))
-    {
-       sendAllesZK(client, buf);
-       fgets(buf, sizeof(buf), resource);
-    }
-}
 
 
 void fatalerFehler(const char *sc)
@@ -437,55 +383,7 @@ int fahreHoch(u_short *port)
     return acceptPort;
 }
 
-void kopfZeilen(int clientSocket, const char *filename)
-{
-    Zeichenkette antwort;
-    antwort.dazu("HTTP/1.0 200 OK\r\n"
-                 "Content-Type: text/html\r\n"
-                 "\r\n");
-    sendAlles(clientSocket, antwort.zkNT(),antwort.laenge());
-}
 
- 
-void melde404(int clientSocket)
-{
-    Zeichenkette antwort;
-    antwort.dazu("HTTP/1.0 404 NOT FOUND\r\n"     
-                 "Content-Type: text/html\r\n"
-                 "\r\n"
-                 "<HTML><TITLE>Not Found</TITLE>\r\n"
-                 "<BODY><P>The server could not find the file\r\n"
-                 "</BODY></HTML>\r\n");
-    sendAlles( clientSocket, antwort.zkNT(),antwort.laenge() );
-}
-
-/* Schicke eine Datei zum Webbrowser */
-void serve_file(Lesepuffer& lesepuffer,int clientSocket, const char *filename)
-{
-    FILE *resource = NULL;
-    int numchars = 1;
-    
-    bool erfolg(false);
-    Zeichenkette zeile(1000,erfolg);
-
-    while ( numchars > 0 )  /* read & discard kopfZeilen */
-    {  
-      numchars = leseZeile(lesepuffer, zeile, 1000);
-      zeile.leere();
-    }
-
-    resource = fopen(filename, "r");
-    if (resource == NULL)
-    {
-        melde404(clientSocket);
-    }
-    else
-    {
-       kopfZeilen(clientSocket, filename); 
-       sendeDatei(clientSocket, resource);
-    }
-    fclose(resource);
-}
 
 
 
