@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="SicherHttpd" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/SicherHttpd" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/SicherHttpd" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="-fexceptions" />
+		</Compiler>
+		<Unit filename="../KopfzeilenParser.h" />
+		<Unit filename="../KopfzeilenParserUT.cpp" />
+		<Unit filename="../LesePuffer.h" />
+		<Unit filename="../ProzedurVerwalter.cpp" />
+		<Unit filename="../ProzedurVerwalter.h" />
+		<Unit filename="../URLParser.cpp" />
+		<Unit filename="../URLParser.h" />
+		<Unit filename="../baueKopfzeilenParserUT.sh" />
+		<Unit filename="../baueServer.sh" />
+		<Unit filename="../baueURLParserUnitTest.sh" />
+		<Unit filename="../baueZK.sh" />
+		<Unit filename="../buildUTfeld.sh" />
+		<Unit filename="../feldUnitTest.cpp" />
+		<Unit filename="../sicherServer.cpp" />
+		<Unit filename="../sicherServer6.cpp" />
+		<Unit filename="../sicherSturz.cpp" />
+		<Unit filename="../sicherSturz.h" />
+		<Unit filename="../socketNuetzlich.cpp" />
+		<Unit filename="../socketNuetzlich.h" />
+		<Unit filename="../zkUnitTest.cpp" />
+		<Extensions>
+			<code_completion />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
