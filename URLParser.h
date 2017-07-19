@@ -36,8 +36,6 @@ class URLParser
    bool istGrossBst(char z);
 
 
-   bool istBst(char z);
-   bool istWertZeichen(char z);
 
 
    bool leseWortGB(Zeichenkette& wort);
@@ -50,6 +48,8 @@ class URLParser
    bool leseParamWert(Zeichenkette& wort);
 
    bool parseProzedurParameter(ParameterListeTyp& parameterListe);
+
+   bool istWertZeichen(char z);
 
 
   void richteEin()

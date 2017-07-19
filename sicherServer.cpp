@@ -308,6 +308,12 @@ public:
        }
    }
 
+   ~HTTPVerarbeiter()
+   {
+      delete m_lesepuffer;
+      m_lesepuffer = NULL;
+   }
+
 
 
 };
