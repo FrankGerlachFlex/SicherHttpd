@@ -85,26 +85,32 @@ class KopfzeilenParser
 public:
 
 
-   
+
 
 #ifndef KOPFZEILENPARSER_UT
-   KopfzeilenParser():m_hatZeichen(false),m_lesePuffer(lesePuffer)
-   {}
-   void holeZeichen(Lesepuffer* lesePuffer)
-   {  
+   KopfzeilenParser(Lesepuffer* lesePuffer):m_hatZeichen(false),m_lesePuffer(lesePuffer)
+   {
+       holeZeichen();
+   }
+private:
+   void holeZeichen()
+   {
        bool erfolg;
        m_aktuellesZeichen = m_lesePuffer->leseZeichen(erfolg);
-       m_hatZeichen = erfolg; 
+       m_hatZeichen = erfolg;
    }
 
    bool leseWert(Zeichenkette& wert)
    {
+      wert = "";
       while( m_hatZeichen && istKopfzeilenWertZeichen(m_aktuellesZeichen) )
       {
           wert.dazu(m_aktuellesZeichen);
           holeZeichen();
       }
+      return wert.laenge() > 0;
    }
+public:
 #else
    Zeichenkette m_eingabe;
    uint32_t m_eingabeZeiger;
@@ -113,27 +119,31 @@ public:
    KopfzeilenParser(const char* eingabe):m_hatZeichen(false),m_lesePuffer(NULL),m_eingabeZeiger(0)
    {
        m_eingabe.dazu(eingabe);
+       holeZeichen();
    }
+
    void holeZeichen()
-   {  
+   {
        if( m_eingabe.laenge() == m_eingabeZeiger )
        {
           m_hatZeichen = false;
        }
        else
        {
-          m_hatZeichen = true;           
+          m_hatZeichen = true;
           m_aktuellesZeichen = m_eingabe[m_eingabeZeiger++];
-       }  
+       }
    }
 
-   
+
 #endif
-   
+
 
    bool leseZeile(Zeichenkette& name, Zeichenkette& wert)
    {
-      holeZeichen();
+      name.leere();
+      wert.leere();
+
       while( m_hatZeichen && istKopfzeilenNameZeichen(m_aktuellesZeichen) )
       {
           name.dazu(m_aktuellesZeichen);
@@ -144,12 +154,14 @@ public:
          if( m_hatZeichen && (m_aktuellesZeichen == ':') )
          {
              holeZeichen();
-             
-             while( m_hatZeichen && (m_aktuellesZeichen == ' ') )
+
+             if( m_hatZeichen && (m_aktuellesZeichen == ' ') )
              {
                 holeZeichen();
              }
-             while( m_hatZeichen && istKopfzeilenWertZeichen(m_aktuellesZeichen) )
+             else return false;
+
+             while( m_hatZeichen && (m_aktuellesZeichen != '\r') )
              {
                 wert.dazu(m_aktuellesZeichen);
                 holeZeichen();
@@ -165,11 +177,95 @@ public:
                       return true;
                    }
                 }
-             }            
-         }          
+             }
+         }
       }
       return false;
    }
+
+
+
+
+};
+
+
+class HostWertPruefer
+{
+    const Zeichenkette* m_zk;
+    uint32_t m_stelle;
+    char     m_aktuellesZeichen;
+    bool     m_hatZeichen;
+
+    void leseZeichen()
+    {
+       if( (m_stelle < 1000) && (m_stelle < m_zk->laenge()) )
+       {
+           m_aktuellesZeichen = (*m_zk)[m_stelle++];
+           m_hatZeichen = true;
+       }
+       else
+       {
+          m_hatZeichen = false;
+       }
+    }
+
+    bool leseHostWort()
+    {
+       uint32_t laenge(0);
+       while( (laenge < 30) && m_hatZeichen && istHostBst(m_aktuellesZeichen))
+       {
+          laenge++;
+          leseZeichen();
+       }
+       return laenge > 0;
+    }
+
+    bool leseHostPort()
+    {
+       uint32_t laenge(0);
+       while( (laenge < 6) && m_hatZeichen && istZiffer(m_aktuellesZeichen))
+       {
+          laenge++;
+          leseZeichen();
+       }
+       return laenge > 0;
+    }
+
+public:
+    HostWertPruefer(const Zeichenkette* zk):m_zk(zk),
+                                            m_stelle(0),
+                                            m_aktuellesZeichen(0),
+                                            m_hatZeichen(false)
+    {
+       leseZeichen();
+    }
+
+    bool pruefe()
+    {
+        bool wortFolgt(false);
+        while( leseHostWort() )
+        {
+            wortFolgt = false;
+            if( m_hatZeichen && (m_aktuellesZeichen == '.') )
+            {
+                wortFolgt = true;
+                leseZeichen();
+            }
+        }
+        if( wortFolgt )
+        {
+           return false;
+        }
+        if( m_hatZeichen && (m_aktuellesZeichen == ':') )
+        {
+            leseZeichen();
+            if( !leseHostPort() )
+            {
+               return false;
+            }
+        }
+        return !m_hatZeichen;
+    }
 
 
 };
