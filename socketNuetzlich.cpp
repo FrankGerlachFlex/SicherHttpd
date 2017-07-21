@@ -52,12 +52,12 @@ void sendAllesZK(int socket, const char* pufferNT)
 void sendeHTTPantwort(int socket, const Zeichenkette& antwort)
 {
     Zeichenkette antwortMitKopfzeilen;
-    antwortMitKopfzeilen = "HTTP/1.1 200 OK\r\n";
-    antwortMitKopfzeilen.dazu("Content-Type: text/html\r\n");
-    antwortMitKopfzeilen.dazu("Content-Length: ");
+    antwortMitKopfzeilen = "HTTP/1.1 200 OK\r\n"
+                           "Content-Type: text/html\r\n"
+                           "Content-Length: ";
     antwortMitKopfzeilen.dazuZahl(antwort.laenge());
-    antwortMitKopfzeilen.dazu("\r\n");
-    antwortMitKopfzeilen.dazu("Connection: Closed\r\n\r\n");
+    antwortMitKopfzeilen.dazu("\r\n"
+                              "Connection: Closed\r\n\r\n");
 
     antwortMitKopfzeilen.dazu(antwort);
 

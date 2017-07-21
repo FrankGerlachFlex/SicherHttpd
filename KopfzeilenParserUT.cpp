@@ -156,6 +156,10 @@ int main(int argc, char** argv)
     assert(pruefHost("x:7122"));
 
 
+    assert(!pruefHost("x/"));
+    assert(!pruefHost("x:"));
+
+
 
     cout << "Unit Test erfolgreich " << endl;
     return 0;

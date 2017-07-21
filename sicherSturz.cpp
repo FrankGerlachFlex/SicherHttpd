@@ -2,6 +2,15 @@
 #include "stdio.h"
 
 
+/* Führe einen sicher debuggbaren Zustand des Prozesses herbei.
+   Sollte gerufen werden wenn
+
+   + kein Speicher mehr vorhanden
+   + essentielle Dateien nicht geoeffnet werden koennen
+   + keine Handles mehr verfuegbar sind
+   + vergleichbare Ausnahemzustaende
+
+ */
 void sicherSturz(const char* meldung)
 {
    printf("Sicherer Sturz, Anhalten: %s\n",meldung);

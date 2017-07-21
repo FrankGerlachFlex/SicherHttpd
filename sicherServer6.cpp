@@ -1,4 +1,4 @@
-/* Einfacher und sicherer Webserver, in C++.
+/* Einfacher und sicherer Webserver, in C++, AUSGABE IPv6 / EXPERIMENTELL !
 
    Erweiterbar durch benutzerdefinierten C++ Code.
 
@@ -52,7 +52,7 @@ public:
                                         m_socket(socket)
    {
       m_rohPuffer = new char[m_kapazitaet];
-      erfolg = m_rohPuffer != NULL;        
+      erfolg = m_rohPuffer != NULL;
    }
 
    char leseZeichen(bool& erfolg)
@@ -64,7 +64,7 @@ public:
          {
              erfolg = false;
              return 0;
-         } 
+         }
          else
          {
             m_gueltig = antwort;
@@ -182,8 +182,8 @@ bool pruefeURL(const Zeichenkette& url)
       return false;
    }
    uint16_t zeiger = 0;
-   char zeichen = url[zeiger++]; 
-  
+   char zeichen = url[zeiger++];
+
    while( true )
    {
        if( !istNormalZeichen(zeichen) )
@@ -194,7 +194,7 @@ bool pruefeURL(const Zeichenkette& url)
              if( zeichen && !istNormalZeichen(zeichen) )
              {
                return false;
-             } 
+             }
           }
           else return false;
        }
@@ -207,7 +207,7 @@ bool pruefeURL(const Zeichenkette& url)
          zeichen = url[zeiger++];
        }
    }
-   return true; 
+   return true;
 }
 
 /* sende die gesamte Anzhal Oktets, blockiere bis
@@ -286,7 +286,7 @@ void* arbeite(void* param) //int client)
  uint32_t numchars=0;
 
  SocketSchliesserHelfer sslh(client);
- 
+
 
  bool erfolg;
  Lesepuffer lesepuffer(client,erfolg);
@@ -294,9 +294,9 @@ void* arbeite(void* param) //int client)
  if(!erfolg)
  {
    return NULL;
- } 
+ }
 
-  
+
  Zeichenkette ersteZeile(1025,erfolg);
  if(!erfolg)
  {
@@ -309,10 +309,10 @@ void* arbeite(void* param) //int client)
  spalten.resize(2);
 
  ersteZeile.spalteAuf(' ', spalten);
- 
+
  Zeichenkette methode = spalten[0];
  Zeichenkette url = spalten[1];
- 
+
 
  //cout << "methode: " << methode.zkNT() << endl;
 
@@ -324,22 +324,22 @@ void* arbeite(void* param) //int client)
 
  if ( methode == "POST")
  {
-      
+
  }
 
- 
+
 
  if( !pruefeURL(url) )
  {
    printf("illegale URL\n");
-   return NULL;  
+   return NULL;
  }
 
- 
+
 
    if( methode == "GET" )
    {
-    
+
        Zeichenkette dateiPfad(50,erfolg);
        if( !erfolg )
        {
@@ -354,12 +354,12 @@ void* arbeite(void* param) //int client)
        }
 
        struct stat st;
-       if (stat(dateiPfad.zkNT(), &st) == -1) 
+       if (stat(dateiPfad.zkNT(), &st) == -1)
        {
            bool erfolg;
            Zeichenkette zeile(1000, erfolg);
            while ( numchars > 0 )  /* lese und verwerfe kopfZeilen */
-           {              
+           {
               numchars = leseZeile(lesepuffer, zeile, 1000);
               zeile.leere();
            }
@@ -427,14 +427,14 @@ int leseZeile(Lesepuffer& lesepuffer, Zeichenkette& zeichenkette, int size)
           if(!erfolg || (zeichen != '\n') )
           {
             return -1;
-          } 
-       }   
+          }
+       }
        else
        {
           if( ausgabeZeiger < size )
           {
-             zeichenkette.dazu(zeichen); 
-             ausgabeZeiger++;              
+             zeichenkette.dazu(zeichen);
+             ausgabeZeiger++;
           }
           else
           {
@@ -444,9 +444,9 @@ int leseZeile(Lesepuffer& lesepuffer, Zeichenkette& zeichenkette, int size)
           if(!erfolg)
           {
             return -1;
-          } 
-       } 
-         
+          }
+       }
+
     }
     while(zeichen != '\n');
 
@@ -481,7 +481,7 @@ int fahreHoch(u_short *port)
     {
        fatalerFehler("bind");
     }
-    if (*port == 0)  
+    if (*port == 0)
     {
         socklen_t namelen = sizeof(name);
         if (getsockname(acceptPort, (struct sockaddr *)&name, &namelen) == -1)
@@ -512,7 +512,7 @@ void kopfZeilen(int client, const char *filename)
  sendAllesZK(client, buf);
 }
 
- 
+
 void melde404(int client)
 {
     char buf[1024];
@@ -538,12 +538,12 @@ void serve_file(Lesepuffer& lesepuffer,int clientSocket, const char *filename)
 {
  FILE *resource = NULL;
  int numchars = 1;
- 
+
  bool erfolg(false);
  Zeichenkette zeile(1000,erfolg);
 
  while ( numchars > 0 )  /* read & discard kopfZeilen */
- {  
+ {
    numchars = leseZeile(lesepuffer, zeile, 1000);
    zeile.leere();
  }
@@ -555,7 +555,7 @@ void serve_file(Lesepuffer& lesepuffer,int clientSocket, const char *filename)
  }
  else
  {
-    kopfZeilen(clientSocket, filename); 
+    kopfZeilen(clientSocket, filename);
     sendeDatei(clientSocket, resource);
  }
  fclose(resource);

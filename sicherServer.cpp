@@ -35,6 +35,7 @@ extern "C" {
 #include "URLParser.h"
 #include "LesePuffer.h"
 #include "socketNuetzlich.h"
+#include "KopfzeilenParser.h"
 
 using namespace std;
 
@@ -49,12 +50,12 @@ using namespace std;
 
 void* arbeite(void* param);
 void fehlermeldung(int);
- 
+
 void fatalerFehler(const char *);
- 
- 
- 
- 
+
+
+
+
 int fahreHoch(u_short *);
 void nichtRealisiert(int);
 extern void meldeProzedurenAn();
@@ -85,16 +86,19 @@ class HTTPVerarbeiter
 {
    int m_clientSocket;
    Lesepuffer* m_lesepuffer;
+   Zeichenkette m_host;
+
+   //SFzkzk m_kopfzeilen;
 
    void nichtRealisiert()
    {
 	   Zeichenkette antwort;
-	   antwort.dazu("HTTP/1.0 501 Method Not Implemented\r\n" 	 
+	   antwort.dazu("HTTP/1.0 501 Method Not Implemented\r\n"
 	                "Content-Type: text/html\r\n\r\n"
-                   "<HTML><HEAD><TITLE>Method Not Implemented\r\n"	 
-                   "</TITLE></HEAD>\r\n"
-                   "<BODY><P>HTTP request method not supported.\r\n"
-                   "</BODY></HTML>\r\n");
+                    "<HTML><HEAD><TITLE>Method Not Implemented\r\n"
+                    "</TITLE></HEAD>\r\n"
+                    "<BODY><P>HTTP request method not supported.\r\n"
+                    "</BODY></HTML>\r\n");
 	   sendAlles(m_clientSocket,antwort.zkNT(),antwort.laenge());
    }
 
@@ -128,13 +132,13 @@ class HTTPVerarbeiter
        }
 
        struct stat st;
-       if (stat(dateiPfad.zkNT(), &st) == -1) 
+       if (stat(dateiPfad.zkNT(), &st) == -1)
        {
            bool erfolg;
            Zeichenkette zeile(1000, erfolg);
            int numchars(1);
            while ( numchars > 0 )  /* lese und verwerfe kopfZeilen */
-           {              
+           {
               numchars = leseZeile(zeile, 1000);
               zeile.leere();
            }
@@ -164,14 +168,14 @@ class HTTPVerarbeiter
           {
               if( zeichen != '\r')
               {
-                 zeile.dazu(zeichen); 
+                 zeile.dazu(zeichen);
                  anzahl++;
               }
-              
+
           }
        }
        while( true );
-       
+
        return anzahl;
    }
 
@@ -179,7 +183,7 @@ class HTTPVerarbeiter
    {
        Zeichenkette antwort;
        antwort.dazu("HTTP/1.0 400 BAD REQUEST\r\n"
-                    "Content-type: text/html\r\n"     
+                    "Content-type: text/html\r\n"
                     "\r\n"
                     "<P>Your browser sent a bad request, "
                     "such as a POST without a Content-Length.\r\n");
@@ -209,11 +213,11 @@ class HTTPVerarbeiter
        sendAlles(m_clientSocket, antwort.zkNT(),antwort.laenge());
    }
 
-    
+
    void melde404()
    {
        Zeichenkette antwort;
-       antwort.dazu("HTTP/1.0 404 NOT FOUND\r\n"     
+       antwort.dazu("HTTP/1.0 404 NOT FOUND\r\n"
                     "Content-Type: text/html\r\n"
                     "\r\n"
                     "<HTML><TITLE>Not Found</TITLE>\r\n"
@@ -227,12 +231,12 @@ class HTTPVerarbeiter
    {
        FILE *resource = NULL;
        int numchars = 1;
-       
+
        bool erfolg(false);
        Zeichenkette zeile(1000,erfolg);
 
        while ( numchars > 0 )  /* read & discard kopfZeilen */
-       {  
+       {
          numchars = leseZeile(zeile, 1000);
          zeile.leere();
        }
@@ -244,7 +248,7 @@ class HTTPVerarbeiter
        }
        else
        {
-          kopfZeilen(filename); 
+          kopfZeilen(filename);
           sendeDatei(resource);
        }
        fclose(resource);
@@ -258,8 +262,11 @@ class HTTPVerarbeiter
 
 
 
+
+   bool m_erfolg;
 public:
-   HTTPVerarbeiter(int clientSocket):m_clientSocket(clientSocket),m_lesepuffer(NULL)
+   HTTPVerarbeiter(int clientSocket):m_clientSocket(clientSocket),
+                                     m_lesepuffer(NULL)
    {}
 
 
@@ -272,13 +279,13 @@ public:
        {
          sicherSturz("kein Speicher");
        }
-       
+
        Zeichenkette ersteZeile(1025,erfolg);
-        
+
        Zeichenkette methode;
        bool istProzedur;
        Zeichenkette prozedurName;
-        
+
        SFzkzk parameterListe(5,erfolg);
        URLParser urlparser(m_lesepuffer);
        Zeichenkette urlPfad(20,erfolg);
@@ -289,7 +296,27 @@ public:
           return ;
        }
 
-       cout << "methode: " << methode.zkNT() << endl;
+       Zeichenkette koName, koWert;
+       KopfzeilenParser kop(m_lesepuffer);
+       while( kop.leseZeile(koName, koWert))
+       {
+           cout << "Kopfz: " << koName.zkNT() << " " << koWert.zkNT() << endl;
+           //m_kopfzeilen.trageEin(koName, koWert);
+           if( koName == "host")
+           {
+              HostWertPruefer hwp(&koWert);
+              if(!hwp.pruefe())
+              {
+                 m_host = koWert;
+                 cout << "schlechter Host" << endl;
+                 return;
+              }
+
+           }
+       }
+
+
+       //cout << "methode: " << methode.zkNT() << endl;
 
        if( methode == "GET" )
        {
@@ -300,7 +327,7 @@ public:
           else
           {
              verarbeiteDateiAnforderung(urlPfad);
-          }          
+          }
        }
        else
        {
@@ -324,12 +351,12 @@ void* arbeite(void* param) //int client)
 {
     long long clientLL = (long long)param;
     int clientSocket = clientLL;
-     
+
     SocketSchliesserHelfer sslh(clientSocket);
 
     HTTPVerarbeiter httpVerarbeiter(clientSocket);
     httpVerarbeiter.verarbeiteAnfrage();
-    
+
     return NULL;
 }
 
@@ -341,8 +368,8 @@ void fatalerFehler(const char *sc)
    sicherSturz(sc);
 }
 
- 
- 
+
+
 
 int fahreHoch(u_short *port)
 {
@@ -370,7 +397,7 @@ int fahreHoch(u_short *port)
     {
        fatalerFehler("bind");
     }
-    if (*port == 0)  
+    if (*port == 0)
     {
         socklen_t namelen = sizeof(name);
         if (getsockname(acceptPort, (struct sockaddr *)&name, &namelen) == -1)
@@ -389,10 +416,94 @@ int fahreHoch(u_short *port)
     return acceptPort;
 }
 
+template<uint8_t anzThreads>
+class ThreadVerwaltung
+{
+   Feld<pthread_t> m_threads;
+   Feld<uint8_t> m_zustand;
 
+  
 
+public:
+  ThreadVerwaltung()
+  {
+     m_threads.resize(anzThreads); 
+     m_zustand.resize(anzThreads);
+     for(uint8_t i=0; i < anzThreads; i++)
+     {
+        m_zustand[i] = 1;
+     }
+  }
 
+  void herunterfahren()
+  {
+       for(uint8_t i=0; i < anzThreads; i++)
+       {
+          if( m_zustand[i] == 0 )
+          {
+             void* retVal(NULL);
+             if (pthread_join(m_threads[i], &retVal) != 0)
+             {
+                perror("pthread_join");
+             }
+             else
+             {
+                m_zustand[i] = 1;
+             }
+          }                         
+       }
+       m_threads.resize(0);
+       m_zustand.resize(0);
+  }
 
+  void erzeugeThread(long long client_sockLL)
+  {
+       bool freeThreadFound(false);
+
+       while( !freeThreadFound )
+       {
+          for(uint8_t i=0; i < anzThreads; i++)
+          {
+             if( m_zustand[i] == 1 )
+             {
+                if (pthread_create(&m_threads[i], NULL, arbeite, (void*) client_sockLL) != 0)
+                {
+                   perror("pthread_create");
+                }
+                m_zustand[i] = 0;
+                freeThreadFound = true;
+                break;
+             }
+          }
+          if( !freeThreadFound )
+          {
+             for(uint8_t i=0; i < anzThreads; i++)
+             {
+                void* retVal(NULL);
+                if (pthread_join(m_threads[i], &retVal) != 0)
+                {
+                   perror("pthread_join");
+                }
+                else
+                {
+                   m_zustand[i] = 1;
+                }                         
+             }
+          }
+       }       
+  }
+ 
+};
+
+bool g_signalisiereHerunterfahren(false);
+
+ThreadVerwaltung<10> g_tv;
+
+void fahreServerHerunter()
+{
+   g_tv.herunterfahren();
+   exit(0);
+}
 
 
 
@@ -403,7 +514,7 @@ int main(void)
     int client_sock = -1;
     struct sockaddr_in client_name;
     socklen_t client_name_len = sizeof(client_name);
-    pthread_t newthread;
+    
 
     server_sock = fahreHoch(&port);
     printf("httpd running on port %d\n", port);
@@ -413,16 +524,19 @@ int main(void)
       client_sock = accept(server_sock,
                           (struct sockaddr *)&client_name,
                           &client_name_len);
+
+      if( g_signalisiereHerunterfahren )
+      {
+         fahreServerHerunter();
+      } 
+
       if (client_sock == -1)
       {
         perror("accept failed");
       }
 
       long long client_sockLL = client_sock;
-      if (pthread_create(&newthread , NULL, arbeite, (void*) client_sockLL) != 0)
-      {
-         perror("pthread_create");
-      }
+      g_tv.erzeugeThread(client_sockLL);
     }
 
     close(server_sock);

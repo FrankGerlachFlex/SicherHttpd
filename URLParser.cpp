@@ -11,7 +11,7 @@
 #include "Nuetzlich.h"
 
 using namespace std;
- 
+
 #ifdef URLPARSER_UNITTEST
 void URLParser::holeZeichen()
 {
@@ -19,20 +19,20 @@ void URLParser::holeZeichen()
    {
        m_aktuellesZeichen = m_eingabe[m_ausgabeStelle++];
        m_hatZeichen = true;
-       
+
    }
    else
    {
       m_hatZeichen = false;
    }
 }
-#else 
+#else
 
 void URLParser::holeZeichen()
-{  
+{
     bool erfolg;
     m_aktuellesZeichen = m_lesePuffer->leseZeichen(erfolg);
-    m_hatZeichen = erfolg; 
+    m_hatZeichen = erfolg;
 }
 #endif
 
@@ -40,7 +40,7 @@ bool URLParser::istGrossBst(char z)
 {
    switch(z)
    {
-      
+
       case 'A':
       case 'B':
       case 'C':
@@ -155,7 +155,7 @@ bool URLParser::leseWortGB(Zeichenkette& wort)
    {
        wort.dazu(m_aktuellesZeichen);
        holeZeichen();
-   } 
+   }
    return wort.laenge() > 0;
 }
 
@@ -165,7 +165,7 @@ bool URLParser::leseWort(Zeichenkette& wort)
    {
        wort.dazu(m_aktuellesZeichen);
        holeZeichen();
-   } 
+   }
    return wort.laenge() > 0;
 }
 
@@ -175,7 +175,7 @@ bool URLParser::leseParamWert(Zeichenkette& wort)
    {
        wort.dazu(m_aktuellesZeichen);
        holeZeichen();
-   } 
+   }
    return true;
 }
 
@@ -193,13 +193,13 @@ bool URLParser::leseWortMitPunkten(Zeichenkette& wort)
           if( !(m_hatZeichen && istBst(m_aktuellesZeichen)) )
           {
               return false;
-          }             
+          }
        }
    }
    return wort.laenge() > 0;
 }
 
- 
+
 
 bool URLParser::parseProzedurParameter(ParameterListeTyp& parameterListe)
 {
@@ -243,19 +243,19 @@ bool URLParser::parseProzedurParameter(ParameterListeTyp& parameterListe)
    return true;
 }
 
-/* parse die erste HTTP Zeile. Im Falle einer Dateianforderung ist urlPfad gefuellt. 
+/* parse die erste HTTP Zeile. Im Falle einer Dateianforderung ist urlPfad gefuellt.
                                Im Falle eines Prozeduraufrufs ist prozedurName sowie parameterListe gefuellt.
 */
-bool URLParser::parseURL( Zeichenkette& method, 
+bool URLParser::parseURL( Zeichenkette& method,
                           bool& istProzedur,
-                          Zeichenkette& urlPfad, 
+                          Zeichenkette& urlPfad,
                           Zeichenkette& prozedurName,
                           ParameterListeTyp& parameterListe)
 {
     urlPfad = "";
 
     holeZeichen();
-    
+
     method.leere();
     leseWortGB(method);
 
@@ -285,13 +285,13 @@ bool URLParser::parseURL( Zeichenkette& method,
 
     uint anzahlPfadAnteile(0);
     while( m_hatZeichen &&  (m_aktuellesZeichen != ' ') && (m_aktuellesZeichen != '?'))
-    { 
+    {
        pfadAnteil = "";
        leseWortMitPunkten(pfadAnteil);
        cout << "PA " << pfadAnteil.zkNT() << endl;
-       
+
        urlPfad.dazu(pfadAnteil);
-       
+
        if( m_hatZeichen &&  (m_aktuellesZeichen == '/') )
        {
            urlPfad.dazu('/');
@@ -315,13 +315,18 @@ bool URLParser::parseURL( Zeichenkette& method,
     if( m_hatZeichen &&  (m_aktuellesZeichen == ' ') )
     {
         holeZeichen();
+
+        while(m_hatZeichen && (m_aktuellesZeichen != '\n') ) // HTTPx/x\r\n weglesen
+        {
+           holeZeichen();
+        }
     }
     else return false;
- 
-    
+
+
     return true;
 }
-    
+
 
 
 #ifdef URLPARSER_UNITTEST
@@ -332,7 +337,7 @@ int main(int argc, char** argv)
 {
    Zeichenkette method;
    bool istProzedur;
-   Zeichenkette dateiPfad; 
+   Zeichenkette dateiPfad;
    Zeichenkette prozedurName;
    bool erfolg;
    ParameterListeTyp parameterListe(5,erfolg);
@@ -342,7 +347,7 @@ int main(int argc, char** argv)
    dateiPfad = "";
    prozedurName = "";
    parameterListe.loescheFeld();
-   
+
 
    URLParser urlparser2("GETX / HTTP/1.0");
    assert(!urlparser2.parseURL(method,istProzedur,dateiPfad,prozedurName,parameterListe));
@@ -386,13 +391,13 @@ int main(int argc, char** argv)
    prozedurName = "";
    parameterListe.loescheFeld();
 
-    
+
 
 
    URLParser urlparserPARAM2("GET /register?Name=Heinz HTTP/1.0");
    assert(urlparserPARAM2.parseURL(method,istProzedur,dateiPfad,prozedurName,parameterListe));
    assert( parameterListe.anzahl() == 1 );
- 
+
    schluessel = "Name";
    assert( parameterListe.finde(schluessel,wert) && (wert == "Heinz") );
 
