@@ -8,7 +8,7 @@
    Nichtkommerzielle Nutzung ist lizenz- und kostenfrei.
 
    Kommerzielle Nutzung erfordert eine kostenpflichtige Lizenz.
- 
+
    Einzelheiten bitte erfragen bei frankgerlach.tai@gmx.de
 
 */
@@ -16,13 +16,13 @@
 #include "zk.h"
 #include "Streufeld.h"
 #include "HashAdapterZK.h"
-#include "URLParser.h" 
+#include "URLParser.h"
 
- 
+
 
 class AbstrakteProzedur
 {
-   
+
 public:
    virtual bool verarbeite(const ParameterListeTyp& parameter,int ausgabeSocket) = 0;
 
@@ -34,7 +34,7 @@ template<class TypZeiger>
 class WertAdapterAbstr
 {
 public:
-    
+
    static void loesche(TypZeiger*& schluessel )
    {
       schluessel = NULL;
@@ -62,9 +62,14 @@ public:
       }
    }
 
-   void meldeProzedurAn(const Zeichenkette& name,AbstrakteProzedur* prozedur);
+   void meldeProzedurAn(const Zeichenkette& host,
+                        const Zeichenkette& name,
+                        AbstrakteProzedur* prozedur);
 
-   bool fuehreAus(const Zeichenkette& prozedurName,const SFzkzk& parameter,int ausgabeSocket);
+   bool fuehreAus(const Zeichenkette& host,
+                  const Zeichenkette& prozedurName,
+                  const SFzkzk& parameter,
+                  int ausgabeSocket);
 };
 
 #endif

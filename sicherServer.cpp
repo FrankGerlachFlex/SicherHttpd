@@ -111,9 +111,9 @@ class HTTPVerarbeiter
    bool verarbeiteProzedur(const Zeichenkette& prozedurName,
                            const SFzkzk& parameterListe)
    {
-        cout << "verarbeiteProzedur()" << endl;
+        //cout << "verarbeiteProzedur()" << endl;
 
-        if( !g_prozedurVerwalter.fuehreAus(prozedurName,parameterListe,m_clientSocket) )
+        if( !g_prozedurVerwalter.fuehreAus(m_host,prozedurName,parameterListe,m_clientSocket) )
         {
             fehlermeldung();
             return false;
@@ -129,11 +129,7 @@ class HTTPVerarbeiter
        bool erfolg;
        Zeichenkette dateiPfad(50,erfolg);
        dateiPfad.dazu(g_htdocsVerzeichenis);
-       if( m_host.laenge() == 0 )
-       {
-          cout << "host-Header nicht gesetzt, breche ab" << endl;
-          return false;
-       }
+
        dateiPfad.dazu(m_host);
        dateiPfad.dazu('/');
        dateiPfad.dazu(url);
@@ -320,7 +316,7 @@ public:
               HostWertPruefer hwp(&koWert);
               if(!hwp.pruefe())
               {
-                 cout << "schlechter Host" << koWert << endl;
+                 cout << "schlechter Host" << koWert.zkNT() << endl;
                  return;
               }
               else
@@ -331,7 +327,11 @@ public:
            }
        }
 
-
+       if( m_host == "" )
+       {
+          cout << "host-Header nicht gesetzt, breche ab" << endl;
+          return;
+       }
        //cout << "methode: " << methode.zkNT() << endl;
 
        if( methode == "GET" )

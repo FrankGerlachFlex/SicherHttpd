@@ -9,16 +9,19 @@ void meldeProzedurenAn()
 {
    Zeichenkette prozName;
 
+   Zeichenkette host;
+   host = "localhost:8000";
+
    Zusammenzaehler* zZaehler  = new Zusammenzaehler;
    prozName = "/rechne";
-   g_prozedurVerwalter.meldeProzedurAn(prozName,zZaehler);
+   g_prozedurVerwalter.meldeProzedurAn(host,prozName,zZaehler);
 
    Primzahlen* primZahlen  = new Primzahlen;
    prozName = "/primZahlen";
-   g_prozedurVerwalter.meldeProzedurAn(prozName,primZahlen);
+   g_prozedurVerwalter.meldeProzedurAn(host,prozName,primZahlen);
 
 
    Abschalter* abschalter = new Abschalter;
    prozName = "/abschalten";
-   g_prozedurVerwalter.meldeProzedurAn(prozName,abschalter);
+   g_prozedurVerwalter.meldeProzedurAn(host,prozName,abschalter);
 }
