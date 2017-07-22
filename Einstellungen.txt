@@ -1,0 +1,2 @@
+ListenPort:8000
+htdocsWurzelVerzeichnis:/home/buero/htdocs/
