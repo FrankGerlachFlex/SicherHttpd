@@ -25,7 +25,7 @@ class Dateileser
    bool fuellePuffer();
 
 public:
-   Dateileser(Zeichenkette& dateiName, uint32_t pufferGroesse = 10000);
+   Dateileser(const Zeichenkette& dateiName, uint32_t pufferGroesse = 10000);
 
    bool oeffne();
    bool leseZeile(Zeichenkette& zeile);

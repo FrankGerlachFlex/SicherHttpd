@@ -25,7 +25,7 @@ bool Dateileser::fuellePuffer()
 }
 
 
-Dateileser::Dateileser(Zeichenkette& dateiName, uint32_t pufferGroesse):m_gueltigImPuffer(0),
+Dateileser::Dateileser(const Zeichenkette& dateiName, uint32_t pufferGroesse):m_gueltigImPuffer(0),
                                                                         m_leseZeiger(0),
                                                                         m_pufferGroesse(pufferGroesse)
 {

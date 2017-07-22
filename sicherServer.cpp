@@ -36,6 +36,7 @@ extern "C" {
 #include "LesePuffer.h"
 #include "socketNuetzlich.h"
 #include "KopfzeilenParser.h"
+#include "OptionsLeser.h"
 
 using namespace std;
 
@@ -61,6 +62,7 @@ void nichtRealisiert(int);
 extern void meldeProzedurenAn();
 
 ProzedurVerwalter g_prozedurVerwalter;
+Zeichenkette g_htdocsVerzeichenis;
 
 #define leerzeichen(x) isspace((int)(x))
 
@@ -78,6 +80,9 @@ public:
       close(m_socket);
    }
 };
+
+
+
 
 
 
@@ -123,7 +128,14 @@ class HTTPVerarbeiter
    {
        bool erfolg;
        Zeichenkette dateiPfad(50,erfolg);
-       dateiPfad.dazu("/home/buero/htdocs");
+       dateiPfad.dazu(g_htdocsVerzeichenis);
+       if( m_host.laenge() == 0 )
+       {
+          cout << "host-Header nicht gesetzt, breche ab" << endl;
+          return false;
+       }
+       dateiPfad.dazu(m_host);
+       dateiPfad.dazu('/');
        dateiPfad.dazu(url);
 
        if ( dateiPfad.letztesZeichenIst('/') )
@@ -134,6 +146,7 @@ class HTTPVerarbeiter
        struct stat st;
        if (stat(dateiPfad.zkNT(), &st) == -1)
        {
+           cout << "kann Datei " << dateiPfad.zkNT() << " nicht finden " << endl;
            bool erfolg;
            Zeichenkette zeile(1000, erfolg);
            int numchars(1);
@@ -302,14 +315,17 @@ public:
        {
            cout << "Kopfz: " << koName.zkNT() << " " << koWert.zkNT() << endl;
            //m_kopfzeilen.trageEin(koName, koWert);
-           if( koName == "host")
+           if( koName == "Host")
            {
               HostWertPruefer hwp(&koWert);
               if(!hwp.pruefe())
               {
-                 m_host = koWert;
-                 cout << "schlechter Host" << endl;
+                 cout << "schlechter Host" << koWert << endl;
                  return;
+              }
+              else
+              {
+                 m_host = koWert;
               }
 
            }
@@ -422,12 +438,12 @@ class ThreadVerwaltung
    Feld<pthread_t> m_threads;
    Feld<uint8_t> m_zustand;
 
-  
+
 
 public:
   ThreadVerwaltung()
   {
-     m_threads.resize(anzThreads); 
+     m_threads.resize(anzThreads);
      m_zustand.resize(anzThreads);
      for(uint8_t i=0; i < anzThreads; i++)
      {
@@ -450,7 +466,7 @@ public:
              {
                 m_zustand[i] = 1;
              }
-          }                         
+          }
        }
        m_threads.resize(0);
        m_zustand.resize(0);
@@ -487,12 +503,12 @@ public:
                 else
                 {
                    m_zustand[i] = 1;
-                }                         
+                }
              }
           }
-       }       
+       }
   }
- 
+
 };
 
 bool g_signalisiereHerunterfahren(false);
@@ -509,12 +525,36 @@ void fahreServerHerunter()
 
 int main(void)
 {
+    Zeichenkette dn;
+    dn = "Einstellungen.txt";
+    OptionsLeser optionsLeser(dn);
+    if( !optionsLeser.leseDateiEin() )
+    {
+       cout << "kann Einstellungen.txt nicht lesen" << endl;
+       return -1;
+    }
+    Zeichenkette name,portZK;
+
+    name = "ListenPort";
+    if( !optionsLeser.leseOption(name,portZK) )
+    {
+       cout << "ListenPort nicht gesetzt" << endl;
+       return -1;
+    }
+
+    name = "htdocsWurzelVerzeichnis";
+    if( !optionsLeser.leseOption(name,g_htdocsVerzeichenis) )
+    {
+       cout << "ListenPort nicht gesetzt" << endl;
+       return -1;
+    }
+
     int server_sock = -1;
-    u_short port = 8000;
+    u_short port = atoi(portZK.zkNT());
     int client_sock = -1;
     struct sockaddr_in client_name;
     socklen_t client_name_len = sizeof(client_name);
-    
+
 
     server_sock = fahreHoch(&port);
     printf("httpd running on port %d\n", port);
@@ -528,7 +568,7 @@ int main(void)
       if( g_signalisiereHerunterfahren )
       {
          fahreServerHerunter();
-      } 
+      }
 
       if (client_sock == -1)
       {
