@@ -308,6 +308,11 @@ public:
        URLParser urlparser(m_lesepuffer,GROSSE_URL_MAX);
        Zeichenkette urlPfad(20,erfolg);
 
+
+       Zeichenkette partnerIP;
+       bestimmePartnerIP(m_clientSocket,partnerIP);
+
+       
        if( !urlparser.parseURL(methode,istProzedur,urlPfad,prozedurName,parameterListe) )
        {
           cout << "bad first HTTP line" << endl;
@@ -347,10 +352,12 @@ public:
        {
           if( istProzedur )
           {
+             cout << "PROC " << partnerIP.zkNT() << " " << prozedurName.zkNT() << endl; 
              verarbeiteProzedur(prozedurName,parameterListe);
           }
           else
           {
+             cout << "GET " << partnerIP.zkNT() << " " << urlPfad.zkNT() << endl;
              verarbeiteDateiAnforderung(urlPfad);
           }
        }

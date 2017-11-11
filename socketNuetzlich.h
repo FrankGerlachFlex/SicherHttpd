@@ -1,6 +1,7 @@
 #ifndef SOCKETNUETZLICH
 #define SOCKETNUETZLICH
 
+#include "zk.h"
 
 void sendAlles(int socket, const char* puffer, uint16_t anzahl);
 
@@ -9,5 +10,7 @@ void sendAllesZK(int socket, const char* pufferNT);
 
 
 void sendeHTTPantwort(int socket, const Zeichenkette& antwort);
+
+void bestimmePartnerIP(int socket, Zeichenkette& partnerIP);
 
 #endif

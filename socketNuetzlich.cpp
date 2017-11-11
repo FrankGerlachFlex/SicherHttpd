@@ -65,3 +65,26 @@ void sendeHTTPantwort(int socket, const Zeichenkette& antwort)
 }
 
 
+void bestimmePartnerIP(int socket, Zeichenkette& partnerIP)
+{
+   struct sockaddr_storage addr;
+   char partnerZK[INET6_ADDRSTRLEN];
+   socklen_t laenge;
+
+   laenge = sizeof addr;
+   getpeername(socket, (struct sockaddr*)&addr, &laenge);
+
+   // deal with both IPv4 and IPv6:
+   if (addr.ss_family == AF_INET) 
+   {
+       struct sockaddr_in *s = (struct sockaddr_in *)&addr;
+       inet_ntop(AF_INET, &s->sin_addr, partnerZK, sizeof partnerZK);
+   } 
+   else 
+   { // AF_INET6
+       struct sockaddr_in6 *s = (struct sockaddr_in6 *)&addr;
+       inet_ntop(AF_INET6, &s->sin6_addr, partnerZK, sizeof partnerZK);
+   }
+   partnerIP = partnerZK;
+}
+
