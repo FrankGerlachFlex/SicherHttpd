@@ -1,5 +1,8 @@
 Liste der offenen Punkte
 
-TD1 Lastbegrenzung - Anzahl paralleler Threads begrenzen
 
 TD2 Port, htdocs, Anzahl Threads konfigurierbar machen
+
+TD3 Syntax von Dateien und Verzeichnissen nochmals prüfen, Bessere Unittests
+
+TD4 korrekte Fehlermeldungen (HTTP Codes)
