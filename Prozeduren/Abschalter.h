@@ -13,6 +13,7 @@
 
 
 extern bool g_signalisiereHerunterfahren;
+extern Zeichenkette g_PWherunterfahren;
 
 class Abschalter: public AbstrakteProzedur
 {
@@ -31,7 +32,7 @@ public:
            return false;
        }
 
-       if( wert == "geheim1234")
+       if( wert == g_PWherunterfahren)
        {
            g_signalisiereHerunterfahren = true;
        }

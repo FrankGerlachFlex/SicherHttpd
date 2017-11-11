@@ -64,6 +64,8 @@ extern void meldeProzedurenAn();
 
 ProzedurVerwalter g_prozedurVerwalter;
 Zeichenkette g_htdocsVerzeichenis;
+Zeichenkette g_PWherunterfahren;
+
 ThreadWorkQueue<int> __workQueue;
 const int cNumberOfWorkers(10);
 pthread_t __threads[cNumberOfWorkers];
@@ -464,6 +466,8 @@ void fahreServerHerunter()
 
 
 
+
+
 int main(void)
 {
     //starte Threads
@@ -476,26 +480,20 @@ int main(void)
     Zeichenkette dn;
     dn = "Einstellungen.txt";
     OptionsLeser optionsLeser(dn);
-    if( !optionsLeser.leseDateiEin() )
-    {
-       cout << "kann Einstellungen.txt nicht lesen" << endl;
-       return -1;
-    }
+    wahrOderSturz(optionsLeser.leseDateiEin(),"Optionsdatei einlesen" );
+
     Zeichenkette name,portZK;
 
     name = "ListenPort";
-    if( !optionsLeser.leseOption(name,portZK) )
-    {
-       cout << "ListenPort nicht gesetzt" << endl;
-       return -1;
-    }
+    wahrOderSturz(optionsLeser.leseOption(name,portZK),"Option ListenPort" );
 
     name = "htdocsWurzelVerzeichnis";
-    if( !optionsLeser.leseOption(name,g_htdocsVerzeichenis) )
-    {
-       cout << "ListenPort nicht gesetzt" << endl;
-       return -1;
-    }
+    wahrOderSturz(optionsLeser.leseOption(name,g_htdocsVerzeichenis),"Option htdocsWurzelVerzeichnis" );
+
+    name = "PWherunterfahren";
+    wahrOderSturz(optionsLeser.leseOption(name,g_PWherunterfahren),"Option PWherunterfahren"  );
+
+
 
     int server_sock = -1;
     u_short port = atoi(portZK.zkNT());

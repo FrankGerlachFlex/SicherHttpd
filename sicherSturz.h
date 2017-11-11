@@ -3,4 +3,6 @@
 
 void sicherSturz(const char* str);
 
+void wahrOderSturz(bool bedingung,const char* stelle);
+
 #endif

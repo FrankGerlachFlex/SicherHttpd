@@ -17,3 +17,16 @@ void sicherSturz(const char* meldung)
    char* ptrNULL = NULL;
    ptrNULL[2] = 1;//Absturz so machen, dass GDB den Stacktrace anzeigen kann
 }
+
+
+/* Stelle Bedingung sicher und beende das Programm in FALSCH-Fall 
+  
+   stelle soll die versuchte Operation/Bedingung menschenlesbar ausdrücken
+*/
+void wahrOderSturz(bool bedingung,const char* stelle)
+{
+   if( !bedingung )
+   {
+     sicherSturz(stelle);
+   }  
+}
