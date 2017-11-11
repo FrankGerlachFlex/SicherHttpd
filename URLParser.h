@@ -26,10 +26,13 @@ class URLParser
    uint32_t m_ausgabeStelle;
 #else
    Lesepuffer* m_lesePuffer;
+   uint32_t m_groessteURL_Laenge;
+   uint32_t m_zeichenGelesen;
 #endif
 
    char m_aktuellesZeichen; 
    bool m_hatZeichen;
+   
 
    void holeZeichen();
 
@@ -67,7 +70,9 @@ public:
       m_eingabe = testURL;
    }
 #else
-   URLParser(Lesepuffer* lesepuffer):m_lesePuffer(lesepuffer)
+   URLParser(Lesepuffer* lesepuffer,uint32_t groessteURL_Laenge):m_lesePuffer(lesepuffer),
+                                                                 m_groessteURL_Laenge(groessteURL_Laenge),
+                                                                 m_zeichenGelesen(0)
    {
       richteEin();
    }

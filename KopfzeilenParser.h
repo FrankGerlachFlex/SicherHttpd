@@ -9,6 +9,9 @@ class KopfzeilenParser
    bool m_hatZeichen;
    Lesepuffer* m_lesePuffer;
 
+   uint32_t m_groesseKopfzeilenMax;
+   uint32_t m_zeichenGelesen;
+
    bool istKopfzeilenNameZeichen(char z)
    {
       switch(z)
@@ -88,16 +91,32 @@ public:
 
 
 #ifndef KOPFZEILENPARSER_UT
-   KopfzeilenParser(Lesepuffer* lesePuffer):m_hatZeichen(false),m_lesePuffer(lesePuffer)
+
+   KopfzeilenParser(Lesepuffer* lesePuffer,uint32_t groesseKopfzeilenMax):m_hatZeichen(false),
+                                                                          m_lesePuffer(lesePuffer),
+                                                                          m_groesseKopfzeilenMax(groesseKopfzeilenMax),
+                                                                          m_zeichenGelesen(0)
    {
        holeZeichen();
    }
 private:
    void holeZeichen()
    {
-       bool erfolg;
-       m_aktuellesZeichen = m_lesePuffer->leseZeichen(erfolg);
-       m_hatZeichen = erfolg;
+       if( m_zeichenGelesen < m_groesseKopfzeilenMax )
+       {
+          bool erfolg;
+          m_aktuellesZeichen = m_lesePuffer->leseZeichen(erfolg);
+          m_hatZeichen = erfolg;
+          if( erfolg )
+          {
+             m_zeichenGelesen++;
+          }
+       }
+       else
+       {
+          m_hatZeichen = false;
+          m_aktuellesZeichen = 0;
+       }         
    }
 
    bool leseWert(Zeichenkette& wert)

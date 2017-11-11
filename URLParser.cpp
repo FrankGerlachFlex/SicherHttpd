@@ -30,9 +30,21 @@ void URLParser::holeZeichen()
 
 void URLParser::holeZeichen()
 {
-    bool erfolg;
-    m_aktuellesZeichen = m_lesePuffer->leseZeichen(erfolg);
-    m_hatZeichen = erfolg;
+    if( m_zeichenGelesen < m_groessteURL_Laenge )
+    {
+       bool erfolg;
+       m_aktuellesZeichen = m_lesePuffer->leseZeichen(erfolg);
+       if( erfolg )
+       {
+           m_zeichenGelesen++;
+       }
+       m_hatZeichen = erfolg;
+    }
+    else
+    {
+       m_hatZeichen = false;
+       m_aktuellesZeichen = 0;
+    }
 }
 #endif
 
@@ -223,9 +235,12 @@ bool URLParser::parseProzedurParameter(ParameterListeTyp& parameterListe)
        if( m_hatZeichen && (m_aktuellesZeichen == '=') )
        {
           holeZeichen();
-          if(!leseParamWert(paramWert))
+          if( m_hatZeichen )
           {
-             return false;
+             if(!leseParamWert(paramWert))
+             {
+                return false;
+             }
           }
        }
        //cout << "PARAM " << paramName.zkNT() << " " << paramWert.zkNT() << endl;
@@ -255,6 +270,11 @@ bool URLParser::parseURL( Zeichenkette& method,
     urlPfad = "";
 
     holeZeichen();
+
+    if( m_hatZeichen == false )
+    {
+      return false;
+    }
 
     method.leere();
     leseWortGB(method);

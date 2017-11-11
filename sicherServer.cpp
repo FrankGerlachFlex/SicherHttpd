@@ -45,7 +45,8 @@ using namespace std;
 #define SNAME "Server: SicherServer\r\n"
 
 
-
+#define GROSSE_URL_MAX 1000000
+#define GROESSE_KOPFZEILEN_MAX 20000
 
 
 
@@ -304,7 +305,7 @@ public:
        Zeichenkette prozedurName;
 
        SFzkzk parameterListe(5,erfolg);
-       URLParser urlparser(m_lesepuffer);
+       URLParser urlparser(m_lesepuffer,GROSSE_URL_MAX);
        Zeichenkette urlPfad(20,erfolg);
 
        if( !urlparser.parseURL(methode,istProzedur,urlPfad,prozedurName,parameterListe) )
@@ -314,10 +315,10 @@ public:
        }
 
        Zeichenkette koName, koWert;
-       KopfzeilenParser kop(m_lesepuffer);
+       KopfzeilenParser kop(m_lesepuffer,GROESSE_KOPFZEILEN_MAX);
        while( kop.leseZeile(koName, koWert))
        {
-           cout << "Kopfz: " << koName.zkNT() << " " << koWert.zkNT() << endl;
+           //cout << "Kopfz: " << koName.zkNT() << " " << koWert.zkNT() << endl;
            //m_kopfzeilen.trageEin(koName, koWert);
            if( koName == "Host")
            {
