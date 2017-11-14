@@ -38,6 +38,7 @@ extern "C" {
 #include "KopfzeilenParser.h"
 #include "OptionsLeser.h"
 #include "ThreadWorkQueue.h"
+#include "Util.h"
 
 using namespace std;
 
@@ -348,16 +349,19 @@ public:
        }
        //cout << "methode: " << methode.zkNT() << endl;
 
+       Zeichenkette uhrzeit;
+       getCurrentTime(uhrzeit);
+
        if( methode == "GET" )
        {
           if( istProzedur )
           {
-             cout << "PROC " << partnerIP.zkNT() << " " << prozedurName.zkNT() << endl; 
+             cout << uhrzeit.zkNT() << " PROC " << partnerIP.zkNT() << " " << prozedurName.zkNT() << endl; 
              verarbeiteProzedur(prozedurName,parameterListe);
           }
           else
           {
-             cout << "GET " << partnerIP.zkNT() << " " << urlPfad.zkNT() << endl;
+             cout << uhrzeit.zkNT() << " GET " << partnerIP.zkNT() << " " << urlPfad.zkNT() << endl;
              verarbeiteDateiAnforderung(urlPfad);
           }
        }
