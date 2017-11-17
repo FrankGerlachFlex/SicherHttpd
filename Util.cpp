@@ -11,7 +11,7 @@ void getCurrentTime(Zeichenkette& output)
   timeinfo = localtime ( &rawtime );
   output.dazuZahl(timeinfo->tm_year + 1900);
   output.dazu(".");
-  output.dazuZahl(timeinfo->tm_mon);
+  output.dazuZahl(timeinfo->tm_mon + 1);
   output.dazu(".");
   output.dazuZahl(timeinfo->tm_mday);
   output.dazu(" ");
