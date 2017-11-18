@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdint.h>
+#include <iostream>
 #include "feld.h"
 #include "sicherSturz.h"
 
@@ -32,6 +33,12 @@ class Zeichenkette
    }
 
 public:
+   Zeichenkette(const char* zkC)
+   {
+     richteEin();
+     dazu(zkC);
+   }
+   
    Zeichenkette(const Zeichenkette& andere) 
    {
        richteEin();
@@ -74,8 +81,14 @@ public:
  
    bool sichereKapazitaet(uint64_t mindestKapazitaet)
    {
+       
        if( mindestKapazitaet > m_kapazitaet )
        {
+          if( mindestKapazitaet > 500000000 )
+          {
+               cerr << "String length too large. Stopping program for safety reasons" << endl;
+               exit(-1);   
+          }
           uint64_t neuKapazitaet = (m_kapazitaet+1)*2;
           if( neuKapazitaet < mindestKapazitaet )
           {
@@ -336,6 +349,90 @@ public:
          }
       }
    }
+
+   static char upperCase(char zeichen)
+   {
+      if( ('a' <= zeichen) && (zeichen <= 'z') )
+      {
+         return zeichen - 'a' + 'A';
+      }
+      return zeichen;
+   }
+
+   static char lowerCase(char zeichen)
+   {
+      if( ('A' <= zeichen) && (zeichen <= 'Z') )
+      {
+         return zeichen - 'A' + 'a';
+      }
+      return zeichen;
+   }
+
+   bool endetMit(Zeichenkette& zk)
+   {
+       if( zk.laenge() <= laenge() )
+       {
+          uint32_t i= laenge() - zk.laenge();
+          for(uint32_t j=0 ; i < laenge(); i++)
+          {
+             if( upperCase(zk[j++]) != upperCase( (*this)[i] ) )
+             {
+                return false;
+             }
+          }
+          return true;
+       }
+       return false;
+   }
+
+   void makeLowerCase()
+   {
+      uint32_t l=laenge();
+      for(uint32_t i=0; i < l; i++)
+      {
+         m_puffer[i] = lowerCase(m_puffer[i]);
+      }
+   }
+ 
+   void makeUpperCase()
+   {
+      uint32_t l=laenge();
+      for(uint32_t i=0; i < l; i++)
+      {
+         m_puffer[i] = upperCase(m_puffer[i]);
+      }
+   } 
+
+   void rechtsBisZeichen(char zeichen,Zeichenkette& rechts)
+   {
+     rechts = "";
+     int32_t l = laenge();
+     if( l == 0 )
+     {
+        return;
+     }
+     int32_t i=l-1;
+     while( (i >= 0) && (m_puffer[i] != zeichen))
+     {
+         i--;
+     }
+     if( i < 0 )
+     {
+         i=0;
+     }
+     if( m_puffer[i] == zeichen )
+     {
+        i++;
+     }
+     
+     rechts.sichereKapazitaet(l - i);
+     while( i < l )
+     {
+        rechts.dazu(m_puffer[i++]);
+     }
+   }
+
+   
 
    
  

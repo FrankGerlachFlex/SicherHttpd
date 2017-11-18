@@ -91,5 +91,41 @@ int main(int argc,char** argv)
    assert( feld[1] == "/broschuere.html" );
    assert( feld[2] == "HTTP/1.0" );
 
+   zk = "index.html";
+   Zeichenkette zEnde("html");
+   assert( zk.endetMit(zEnde) );
+
+   zk = "index.htm";
+   assert( !zk.endetMit(zEnde) );
+
+   zk = "gemiSCHT";
+
+   zk.makeLowerCase();
+   assert( zk == "gemischt" ); 
+
+   
+   zk.makeUpperCase();
+   assert( zk == "GEMISCHT" ); 
+
+   zk = "123klein";
+   zk.makeLowerCase();
+   assert( zk == "123klein" ); 
+   zk.makeUpperCase();
+   assert( zk == "123KLEIN" ); 
+
+   zk = "test.123";
+
+   Zeichenkette rechts;
+   zk.rechtsBisZeichen('.',rechts);
+   assert( rechts == "123" );
+
+   zk = "unix";
+   zk.rechtsBisZeichen('.',rechts);
+   assert( rechts == "unix" );
+  
+   zk = "unix.";
+   zk.rechtsBisZeichen('.',rechts);
+   assert( rechts == "" );
+
    cout << "Unit test erfolgreich" << endl;
 }

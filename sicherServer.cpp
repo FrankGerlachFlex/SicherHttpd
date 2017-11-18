@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 
 extern "C" {
 #include <pthread.h>
@@ -73,6 +74,9 @@ const int cNumberOfWorkers(10);
 pthread_t __threads[cNumberOfWorkers];
 
 const int WORKER_SHUTDOWN = -100;
+
+bool erfolg;
+SFzkzk __mimeTypes(5,erfolg);
 
 #define leerzeichen(x) isspace((int)(x))
 
@@ -166,7 +170,7 @@ class HTTPVerarbeiter
        }
        else
        {
-           serve_file(dateiPfad.zkNT());
+           serve_file(dateiPfad.zkNT(),st.st_size);
            return true;
        }
    }
@@ -210,25 +214,41 @@ class HTTPVerarbeiter
    }
 
 
-   //TODO: Binaere Datei ???
-   void sendeDatei(FILE *resource)
+   
+   void sendeDatei(int fh)
    {
-       char buf[1024];
-
-       fgets(buf, sizeof(buf), resource);
-       while (!feof(resource))
+       const int bufsz=1024;
+       char buf[bufsz];
+       int anzahl = ::read(fh,buf,bufsz);
+       while ( anzahl > 0)
        {
-          sendAllesZK(m_clientSocket, buf);
-          fgets(buf, sizeof(buf), resource);
+          sendAlles(m_clientSocket, buf,anzahl);
+          anzahl = ::read(fh,buf,bufsz);
        }
    }
 
-   void kopfZeilen( const char *filename)
+   void kopfZeilen( const char *filename,int fileSize)
    {
+       Zeichenkette fn(filename);
+       Zeichenkette endung;
+       fn.rechtsBisZeichen('.',endung);
+
+       Zeichenkette mimeType;
+       if( !__mimeTypes.finde(endung,mimeType) )
+       {
+          mimeType = "unbekannt";
+       }
+        
        Zeichenkette antwort;
        antwort.dazu("HTTP/1.0 200 OK\r\n"
-                    "Content-Type: text/html\r\n"
-                    "\r\n");
+                    "Content-Type: ");
+       antwort.dazu(mimeType);
+       antwort.dazu("\r\n");
+       antwort.dazu("Content-Length: ");
+       antwort.dazuZahl(fileSize);
+       antwort.dazu("\r\n");
+       antwort.dazu("\r\n");
+       //cout << antwort.zkNT() << endl;
        sendAlles(m_clientSocket, antwort.zkNT(),antwort.laenge());
    }
 
@@ -246,9 +266,9 @@ class HTTPVerarbeiter
    }
 
    /* Schicke eine Datei zum Webbrowser */
-   void serve_file(const char *filename)
+   void serve_file(const char *filename,int fileSize)
    {
-       FILE *resource = NULL;
+       //FILE *resource = NULL;
        int numchars = 1;
 
        bool erfolg(false);
@@ -260,17 +280,19 @@ class HTTPVerarbeiter
          zeile.leere();
        }
 
-       resource = fopen(filename, "r");
-       if (resource == NULL)
+       int fh = open(filename,O_RDONLY);
+
+       
+       if (fh < 0)
        {
            melde404();
        }
        else
        {
-          kopfZeilen(filename);
-          sendeDatei(resource);
+          kopfZeilen(filename,fileSize);
+          sendeDatei(fh);
+          close(fh);
        }
-       fclose(resource);
    }
 
    bool leseKopfzeilen()
@@ -477,11 +499,20 @@ void fahreServerHerunter()
 }
 
 
+void richteMIMETypenEin()
+{
+   __mimeTypes.trageEin("pdf","application/pdf");
+   __mimeTypes.trageEin("html","text/html");
+   __mimeTypes.trageEin("htm","text/html");
+   __mimeTypes.trageEin("txt","text/plain");
+}
+
 
 
 
 int main(void)
 {
+    richteMIMETypenEin();
     //starte Threads
     for(uint8_t i=0; i < cNumberOfWorkers; i++)
     {
