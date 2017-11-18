@@ -158,9 +158,87 @@ bool URLParser::istWertZeichen(char z)
    return false;
 }
 
+enum ZeichenTyp{ZTBuchst,ZTZiffer,ZTUnterStrich,ZTStrich,ZTPunkt,ZTLeerzeichen,ZTSonstiges,ZTSchraegStrich,ZTFrageZeichen};
+
+ZeichenTyp bestimmeTyp(char zeichen)
+{
+   switch(zeichen)
+   {
+      case 'a':
+      case 'b':
+      case 'c':
+      case 'd':
+      case 'e':
+      case 'f':
+      case 'g':
+      case 'h':
+      case 'i':
+      case 'j':
+      case 'k':
+      case 'l':
+      case 'm':
+      case 'n':
+      case 'o':
+      case 'p':
+      case 'q':
+      case 'r':
+      case 's':
+      case 't':
+      case 'u':
+      case 'v':
+      case 'w':
+      case 'x':
+      case 'y':
+      case 'z':
+      case 'A':
+      case 'B':
+      case 'C':
+      case 'D':
+      case 'E':
+      case 'F':
+      case 'G':
+      case 'H':
+      case 'I':
+      case 'J':
+      case 'K':
+      case 'L':
+      case 'M':
+      case 'N':
+      case 'O':
+      case 'P':
+      case 'Q':
+      case 'R':
+      case 'S':
+      case 'T':
+      case 'U':
+      case 'V':
+      case 'W':
+      case 'X':
+      case 'Y':
+      case 'Z': return ZTBuchst;
+      case '0':
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9': return ZTBuchst;
+      case '.': return ZTPunkt;
+      case '_': return ZTUnterStrich;
+      case '-': return ZTStrich;
+      case ' ': return ZTLeerzeichen;
+      case '/': return ZTSchraegStrich;
+      case '?': return ZTFrageZeichen;
+      default:  return ZTSonstiges;
+   }
+}
 
 
 
+/* lese Wort mit Grossbuchstaben */
 bool URLParser::leseWortGB(Zeichenkette& wort)
 {
    while( m_hatZeichen && istGrossBst(m_aktuellesZeichen) )
@@ -171,6 +249,7 @@ bool URLParser::leseWortGB(Zeichenkette& wort)
    return wort.laenge() > 0;
 }
 
+/* lese ein Wort mit Buchstaben */
 bool URLParser::leseWort(Zeichenkette& wort)
 {
    while( m_hatZeichen && istBst(m_aktuellesZeichen) )
@@ -191,7 +270,8 @@ bool URLParser::leseParamWert(Zeichenkette& wort)
    return true;
 }
 
-//lese zB. "index.html" oder "antwort.txt.alt"
+//-----------//lese zB. "index.html" oder "antwort.txt.alt"
+/*
 bool URLParser::leseWortMitPunkten(Zeichenkette& wort)
 {
    while( m_hatZeichen && istBst(m_aktuellesZeichen) )
@@ -210,6 +290,155 @@ bool URLParser::leseWortMitPunkten(Zeichenkette& wort)
    }
    return wort.laenge() > 0;
 }
+*/
+
+enum PfadAnteilParserZustand {ZAnfang,ZBuchstabe,ZZiffer,ZStrich,ZUnterStrich,ZPunkt};
+
+bool URLParser::leseURLPfadanteil(Zeichenkette& wort)
+{
+   enum PfadAnteilParserZustand zustand = ZAnfang;
+
+   while(m_hatZeichen)
+   {
+       switch(zustand)
+       {
+           case ZAnfang:
+              if( istBst(m_aktuellesZeichen) )
+              {
+                   wort.dazu(m_aktuellesZeichen);
+                   holeZeichen();
+                   zustand = ZBuchstabe;
+              }
+              else return false;
+           break;
+           case ZBuchstabe:
+              switch(bestimmeTyp(m_aktuellesZeichen) )
+              {
+                  case ZTBuchst:
+                      wort.dazu(m_aktuellesZeichen);
+                      holeZeichen();
+                      zustand = ZBuchstabe;
+                  break;
+                  case ZTPunkt:
+                      wort.dazu(m_aktuellesZeichen);
+                      holeZeichen();
+                      zustand = ZPunkt;
+                  break;
+                  case ZTZiffer:
+                      wort.dazu(m_aktuellesZeichen);
+                      holeZeichen();
+                      zustand = ZZiffer;
+                  break;
+                  case ZTStrich:
+                      wort.dazu(m_aktuellesZeichen);
+                      holeZeichen();
+                      zustand = ZStrich;
+                  break;
+                  case ZTUnterStrich:
+                      wort.dazu(m_aktuellesZeichen);
+                      holeZeichen();
+                      zustand = ZUnterStrich;
+                  break;
+                  case ZTLeerzeichen:
+                  case ZTSchraegStrich:
+                  case ZTFrageZeichen: return true;
+
+                  default: return false; 
+              }
+           break;
+           case ZZiffer:
+              switch(bestimmeTyp(m_aktuellesZeichen) )
+              {
+                  case ZTBuchst:
+                      wort.dazu(m_aktuellesZeichen);
+                      holeZeichen();
+                      zustand = ZBuchstabe;
+                  break;
+                  case ZTPunkt:
+                      wort.dazu(m_aktuellesZeichen);
+                      holeZeichen();
+                      zustand = ZPunkt;
+                  break;
+                  case ZTZiffer:
+                      wort.dazu(m_aktuellesZeichen);
+                      holeZeichen();
+                      zustand = ZZiffer;
+                  break;
+                  case ZTStrich:
+                      wort.dazu(m_aktuellesZeichen);
+                      holeZeichen();
+                      zustand = ZStrich;
+                  break;
+                  case ZTUnterStrich:
+                      wort.dazu(m_aktuellesZeichen);
+                      holeZeichen();
+                      zustand = ZUnterStrich;
+                  break;
+                  case ZTLeerzeichen:
+                      return true;
+                  break;
+                  case ZTSchraegStrich:
+                      return true;
+                  break;
+                  default: return false; 
+              }
+           break;
+           case ZUnterStrich:
+              switch(bestimmeTyp(m_aktuellesZeichen) )
+              {
+                  case ZTBuchst:
+                      wort.dazu(m_aktuellesZeichen);
+                      holeZeichen();
+                      zustand = ZBuchstabe;
+                  break;
+                  case ZTZiffer:
+                      wort.dazu(m_aktuellesZeichen);
+                      holeZeichen();
+                      zustand = ZZiffer;
+                  break;
+                  default: return false; 
+              }
+           break;
+           case ZStrich:
+              switch(bestimmeTyp(m_aktuellesZeichen) )
+              {
+                  case ZTBuchst:
+                      wort.dazu(m_aktuellesZeichen);
+                      holeZeichen();
+                      zustand = ZBuchstabe;
+                  break;
+                  case ZTZiffer:
+                      wort.dazu(m_aktuellesZeichen);
+                      holeZeichen();
+                      zustand = ZZiffer;
+                  break;
+                  default: return false; 
+              }
+           break;
+           case ZPunkt:
+              switch(bestimmeTyp(m_aktuellesZeichen) )
+              {
+                  case ZTBuchst:
+                      wort.dazu(m_aktuellesZeichen);
+                      holeZeichen();
+                      zustand = ZBuchstabe;
+                  break;
+                  case ZTZiffer:
+                      wort.dazu(m_aktuellesZeichen);
+                      holeZeichen();
+                      zustand = ZZiffer;
+                  break;
+                  default: return false; 
+              }
+           break;
+           default: return false;
+       }
+   }
+   return false;//es muss hinter einer URL immer noch ein " HTTP/1.x" kommen
+}
+
+
+
 
 
 
@@ -307,7 +536,10 @@ bool URLParser::parseURL( Zeichenkette& method,
     while( m_hatZeichen &&  (m_aktuellesZeichen != ' ') && (m_aktuellesZeichen != '?'))
     {
        pfadAnteil = "";
-       leseWortMitPunkten(pfadAnteil);
+       if( !leseURLPfadanteil(pfadAnteil) )
+       {
+         return false;
+       } 
        cout << "PA " << pfadAnteil.zkNT() << endl;
 
        urlPfad.dazu(pfadAnteil);
@@ -352,6 +584,41 @@ bool URLParser::parseURL( Zeichenkette& method,
 #ifdef URLPARSER_UNITTEST
 
 #include <assert.h>
+
+
+void akzeptanzTest(const char* url)
+{
+      Zeichenkette method;
+      bool istProzedur;
+      Zeichenkette dateiPfad;
+      Zeichenkette prozedurName;
+      bool erfolg;
+      ParameterListeTyp parameterListe(5,erfolg);
+      URLParser urlparserB(url);
+      if( urlparserB.parseURL(method,istProzedur,dateiPfad,prozedurName,parameterListe) == false )
+      {
+         cout << "URLParser Unit test(akzeptanz) fehlgeschlagen: " << url << endl;
+         exit(-1);
+      }
+}
+
+
+void fehlerTest(const char* url)
+{
+      Zeichenkette method;
+      bool istProzedur;
+      Zeichenkette dateiPfad;
+      Zeichenkette prozedurName;
+      bool erfolg;
+      ParameterListeTyp parameterListe(5,erfolg);
+      URLParser urlparserB(url);
+      if( urlparserB.parseURL(method,istProzedur,dateiPfad,prozedurName,parameterListe) == true )
+      {
+         cout << "URLParser Unit test(fehler) fehlgeschlagen: " << url << endl;
+         exit(-1);
+      }
+}
+
 
 int main(int argc, char** argv)
 {
@@ -432,7 +699,28 @@ int main(int argc, char** argv)
    URLParser urlparserPARAM5("GET /rechne?16=15&B=177&C=6&D=1001 HTTP/1.0");
    assert( !urlparserPARAM5.parseURL(method,istProzedur,dateiPfad,prozedurName,parameterListe) );
 
-   cout << "unit Test erfolgreich" << endl;
+   akzeptanzTest("GET /name.pdf HTTP/1.0");
+   akzeptanzTest("GET /name3.pdf HTTP/1.0"); 
+
+   akzeptanzTest("GET /name3441.pdf HTTP/1.0");   
+   fehlerTest("GET /../x.pdf HTTP/1.0");   
+   fehlerTest("GET /.../x.pdf HTTP/1.0");   
+   fehlerTest("GET /.zzz/x.pdf HTTP/1.0");   
+   fehlerTest("GET /aa/bb/ccccc/../x.pdf HTTP/1.0");
+   fehlerTest("GET /aa/bb/............../../x.pdf HTTP/1.0");
+   fehlerTest("GET jhdskfjhskdfh HTTP/1.0");
+   fehlerTest("GET _____ HTTP/1.0");
+
+   akzeptanzTest("GET /name3441/e333/a767267236762_33/x.pdf HTTP/1.0");   
+   akzeptanzTest("GET /name3441/e3_33/a76_7267236762_33/x.pdf HTTP/1.0");
+
+   fehlerTest("GET /_name3441/e3_33/a76_7267236762_33/x.pdf HTTP/1.0");
+
+   fehlerTest("GET /apfel!/x.pdf HTTP/1.0");
+   fehlerTest("GET /@pfel/x.pdf HTTP/1.0");
+   fehlerTest("GET {apfel/x.pdf HTTP/1.0");
+
+   cout << "unit Test efolgreich" << endl;
    return 1;
 }
 

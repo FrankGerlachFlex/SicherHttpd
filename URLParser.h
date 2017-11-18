@@ -46,7 +46,8 @@ class URLParser
    bool leseWort(Zeichenkette& wort);
 
    //lese zB. "index.html" oder "antwort.txt.alt"
-   bool leseWortMitPunkten(Zeichenkette& wort);
+   //bool leseWortMitPunkten(Zeichenkette& wort);
+   bool leseURLPfadanteil(Zeichenkette& wort);
 
    bool leseParamWert(Zeichenkette& wort);
 
