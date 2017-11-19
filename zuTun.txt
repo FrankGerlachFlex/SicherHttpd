@@ -1,8 +1,6 @@
 Liste der offenen Punkte
 
 
-TD2 Port, htdocs, Anzahl Threads konfigurierbar machen
-
-TD3 Syntax von Dateien und Verzeichnissen nochmals prüfen, Bessere Unittests
+TD2 Anzahl Threads konfigurierbar machen
 
 TD4 korrekte Fehlermeldungen (HTTP Codes)
